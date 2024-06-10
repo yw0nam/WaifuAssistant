@@ -4,6 +4,8 @@ The Unified assistatnt for waifu lovers.
 
 # Feature
 
+Here is project [collection](https://huggingface.co/collections/spow12/visual-novel-66416e5e0e40c1344698d675)
+
 ## Basic feature
 
 - Chatbot (Done)
@@ -19,6 +21,7 @@ The Unified assistatnt for waifu lovers.
 
 # Dataset
 
+## Data sample
 Here is the Dataset samples
 
 Name | dialog_type | text |scene_name | voice_file_name | text_idx  | game_name |
@@ -26,6 +29,7 @@ Name | dialog_type | text |scene_name | voice_file_name | text_idx  | game_name 
 芦花	| conversation |	人違いならごめんなさい。もしかして、まー坊？	| chapter　1-1-02	| rok001_003 |	49	| SenrenBanka |
 芦花	| conversation | やーやー、随分とお久しぶりだね	| chapter　1-1-02 |rok001_005 |	52	| SenrenBanka	| 
 
+## Current dataset
 
 character | visual_novel | TTS | Chatbot |
 --- | --- | --- | --- | 
@@ -45,3 +49,5 @@ character | visual_novel | TTS | Chatbot |
 羽月     | Riddle Joker | --- | Done | 
 茉優     | Riddle Joker | --- | Done | 
 小春     | Riddle Joker | --- | Done | 
+
+I will add more data from Sabbat of the Witch, tenshi☆souzou re-boot! etc...
