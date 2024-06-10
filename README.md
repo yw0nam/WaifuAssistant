@@ -2,7 +2,7 @@
 
 The Unified assistatnt for waifu lovers.
 
-The goal of this project is that the girl recognize user's personality, emotion and voice. So that, in given context, the girl should be response correct voice, text and face.
+The goal of this project is that the girl recognize user's personality, emotion and voice. So that, in given context, the girl should response correct voice, text and face.
 
 # Feature
 
