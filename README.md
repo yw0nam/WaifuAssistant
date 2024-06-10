@@ -2,6 +2,8 @@
 
 The Unified assistatnt for waifu lovers.
 
+The goal of this project is that the girl recognize user's personality, emotion and voice. So that, in given context, the girl should be response correct voice, text and face.
+
 # Feature
 
 Here is project [collection](https://huggingface.co/collections/spow12/visual-novel-66416e5e0e40c1344698d675)
