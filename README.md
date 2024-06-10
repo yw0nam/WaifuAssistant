@@ -4,10 +4,18 @@ The Unified assistatnt for waifu lovers.
 
 # Feature
 
+## Basic feature
+
 - Chatbot (Done)
 - TTS (Done)
 - ASR (Done)
 - Recognize User's emotion(in progress)
+- Generate Girl's Image or model for each response.
+
+## Advance feature
+
+- Response with emotion
+- Response about user's emotion
 
 # Dataset
 
