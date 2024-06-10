@@ -31,6 +31,14 @@ Name | dialog_type | text |scene_name | voice_file_name | text_idx  | game_name 
 
 ## Current dataset
 
+Currently the dataset contains below games
+
+- Senren＊Banka
+- Café Stella and the Reaper's Butterflies
+- Riddle Joker
+
+Here is feature implement table for each character.
+
 character | visual_novel | TTS | Chatbot |
 --- | --- | --- | --- | 
 ムラサメ | Senren＊Banka | --- | Done | 
