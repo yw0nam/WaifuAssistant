@@ -6,7 +6,7 @@ The goal of this project is that the girl recognize user's personality, emotion 
 
 # Feature
 
-Here is project [collection](https://huggingface.co/collections/spow12/visual-novel-66416e5e0e40c1344698d675)
+Here is project [collection](https://huggingface.co/spow12)
 
 ## Basic feature
 
