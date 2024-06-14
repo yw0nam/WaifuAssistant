@@ -43,21 +43,21 @@ Here is feature implement table for each character.
 
 character | visual_novel | TTS | Chatbot |
 --- | --- | --- | --- | 
-ムラサメ | Senren＊Banka | --- | Done | 
-茉子  | Senren＊Banka | --- | Done | 
-芳乃  |  Senren＊Banka | --- | Done | 
-レナ  | Senren＊Banka | --- | Done | 
-千咲  | Senren＊Banka | --- | Done | 
-芦花  | Senren＊Banka | --- | Done | 
-愛衣  | Café Stella and the Reaper's Butterflies | --- | Done | 
-栞那  | Café Stella and the Reaper's Butterflies | --- | Done | 
+ムラサメ | Senren＊Banka | Done | Done | 
+茉子  | Senren＊Banka | Done | Done | 
+芳乃  |  Senren＊Banka | Done | Done | 
+レナ  | Senren＊Banka | Done | Done | 
+千咲  | Senren＊Banka | Done | Done | 
+芦花  | Senren＊Banka | Done | Done | 
+愛衣  | Café Stella and the Reaper's Butterflies | Done | Done | 
+栞那  | Café Stella and the Reaper's Butterflies | Done | Done | 
 ナツメ | Café Stella and the Reaper's Butterflies | Done | Done | 
-希    | Café Stella and the Reaper's Butterflies | --- | Done | 
-涼音  | Café Stella and the Reaper's Butterflies | --- | Done | 
-あやせ    | Riddle Joker | --- | Done | 
-七海     | Riddle Joker | --- | Done | 
-羽月     | Riddle Joker | --- | Done | 
-茉優     | Riddle Joker | --- | Done | 
-小春     | Riddle Joker | --- | Done | 
+希    | Café Stella and the Reaper's Butterflies | Done | Done | 
+涼音  | Café Stella and the Reaper's Butterflies | Done | Done | 
+あやせ    | Riddle Joker | Done | Done | 
+七海     | Riddle Joker | Done | Done | 
+羽月     | Riddle Joker | Done | Done | 
+茉優     | Riddle Joker | Done | Done | 
+小春     | Riddle Joker | Done | Done | 
 
 I will add more data from Sabbat of the Witch, tenshi☆souzou re-boot! etc...
