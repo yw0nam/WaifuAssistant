@@ -11,9 +11,9 @@ Here is project [collection](https://huggingface.co/spow12)
 ## Basic feature
 
 - [Chatbot](https://huggingface.co/spow12/ChatWaifu_v1.0)
-- [TTS](https://huggingface.co/spow12/visual_novel_tts) (Done)
-- [ASR](https://huggingface.co/spow12/Visual-novel-transcriptor) (Done)
-- Generate Girl's Image or model for each response.
+- [TTS](https://huggingface.co/spow12/visual_novel_tts)
+- [ASR](https://huggingface.co/spow12/Visual-novel-transcriptor)
+- Generate Girl's Image or model for each response.(WIP)
 
 ## Advance feature
 
