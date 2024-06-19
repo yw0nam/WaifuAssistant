@@ -10,16 +10,16 @@ Here is project [collection](https://huggingface.co/spow12)
 
 ## Basic feature
 
-- Chatbot (Done)
-- TTS (Done)
-- ASR (Done)
-- Recognize User's emotion(in progress)
+- [Chatbot](https://huggingface.co/spow12/ChatWaifu_v1.0)
+- [TTS](https://huggingface.co/spow12/visual_novel_tts) (Done)
+- [ASR](https://huggingface.co/spow12/Visual-novel-transcriptor) (Done)
 - Generate Girl's Image or model for each response.
 
 ## Advance feature
 
 - Response with emotion
 - Response about user's emotion
+- Recognize User's emotion
 
 # Dataset
 
