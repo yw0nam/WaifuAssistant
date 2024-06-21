@@ -52,6 +52,17 @@ class ChatWaifu(object):
         return message, completion
     
     def request_completion(self, message, generation_configs: dict):
+        """
+        This function sends a completion request to the OpenAI API using the provided message and generation configurations.
+        It appends the model's response to the message and returns the updated message and the completion object.
+
+        Parameters:
+        - message (list): A list of dictionaries representing the conversation. Each dictionary contains 'role' and 'content' keys.
+        - generation_configs (dict): A dictionary containing the configuration parameters for the completion request Check OpenAPI official docs https://platform.openai.com/docs/api-reference/chat/create.
+
+        Returns:
+        - tuple: A tuple containing the updated message (list) and the completion object.
+        """
         completion = self.client.chat.completions.create(
             model=self.model_name,
             messages=message,
