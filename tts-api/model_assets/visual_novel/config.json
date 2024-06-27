@@ -1,0 +1,149 @@
+{
+  "model_name": "visual_novel",
+  "train": {
+    "log_interval": 200,
+    "eval_interval": 1000,
+    "seed": 42,
+    "epochs": 100,
+    "learning_rate": 0.0001,
+    "betas": [
+      0.8,
+      0.99
+    ],
+    "eps": 1e-09,
+    "batch_size": 8,
+    "bf16_run": false,
+    "fp16_run": false,
+    "lr_decay": 0.99996,
+    "segment_size": 16384,
+    "init_lr_ratio": 1,
+    "warmup_epochs": 0,
+    "c_mel": 45,
+    "c_kl": 1.0,
+    "c_commit": 100,
+    "skip_optimizer": false,
+    "freeze_ZH_bert": false,
+    "freeze_JP_bert": false,
+    "freeze_EN_bert": false,
+    "freeze_emo": false,
+    "freeze_style": false,
+    "freeze_decoder": false
+  },
+  "data": {
+    "use_jp_extra": true,
+    "training_files": "Data/visual_novel/train.list",
+    "validation_files": "Data/visual_novel/val.list",
+    "max_wav_value": 32768.0,
+    "sampling_rate": 44100,
+    "filter_length": 2048,
+    "hop_length": 512,
+    "win_length": 2048,
+    "n_mel_channels": 128,
+    "mel_fmin": 0.0,
+    "mel_fmax": null,
+    "add_blank": true,
+    "n_speakers": 16,
+    "cleaned_text": true,
+    "spk2id": {
+      "あやせ": 0,
+      "ナツメ": 1,
+      "ムラサメ": 2,
+      "レナ": 3,
+      "七海": 4,
+      "千咲": 5,
+      "小春": 6,
+      "希": 7,
+      "愛衣": 8,
+      "栞那": 9,
+      "涼音": 10,
+      "羽月": 11,
+      "芦花": 12,
+      "芳乃": 13,
+      "茉優": 14,
+      "茉子": 15
+    },
+    "num_styles": 17,
+    "style2id": {
+      "Neutral": 0,
+      "あやせ": 1,
+      "ナツメ": 2,
+      "ムラサメ": 3,
+      "レナ": 4,
+      "七海": 5,
+      "千咲": 6,
+      "小春": 7,
+      "希": 8,
+      "愛衣": 9,
+      "栞那": 10,
+      "涼音": 11,
+      "羽月": 12,
+      "芦花": 13,
+      "芳乃": 14,
+      "茉優": 15,
+      "茉子": 16
+    }
+  },
+  "model": {
+    "use_spk_conditioned_encoder": true,
+    "use_noise_scaled_mas": true,
+    "use_mel_posterior_encoder": false,
+    "use_duration_discriminator": false,
+    "use_wavlm_discriminator": true,
+    "inter_channels": 192,
+    "hidden_channels": 192,
+    "filter_channels": 768,
+    "n_heads": 2,
+    "n_layers": 6,
+    "kernel_size": 3,
+    "p_dropout": 0.1,
+    "resblock": "1",
+    "resblock_kernel_sizes": [
+      3,
+      7,
+      11
+    ],
+    "resblock_dilation_sizes": [
+      [
+        1,
+        3,
+        5
+      ],
+      [
+        1,
+        3,
+        5
+      ],
+      [
+        1,
+        3,
+        5
+      ]
+    ],
+    "upsample_rates": [
+      8,
+      8,
+      2,
+      2,
+      2
+    ],
+    "upsample_initial_channel": 512,
+    "upsample_kernel_sizes": [
+      16,
+      16,
+      8,
+      2,
+      2
+    ],
+    "n_layers_q": 3,
+    "use_spectral_norm": false,
+    "gin_channels": 512,
+    "slm": {
+      "model": "./slm/wavlm-base-plus",
+      "sr": 16000,
+      "hidden": 768,
+      "nlayers": 13,
+      "initial_channel": 64
+    }
+  },
+  "version": "2.5.0-JP-Extra"
+}
