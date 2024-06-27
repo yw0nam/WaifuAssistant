@@ -1,17 +1,24 @@
 from openai import OpenAI
+from sentence_transformers import SentenceTransformer
+import chromadb
 
 class ChatWaifu(object):
-    def __init__(self, collection, chara_background: dict, emb_model, url, api_key, model_name: str = 'spow12/ChatWaifu_v1.0'):
-        self.collection = collection # Chromadb Collection
+    def __init__(self, configs, chara_background):
+        self.configs = configs
         self.chara_background = chara_background
-        self.emb_model = emb_model
         self.dialogue_bra_token = '「'
         self.dialogue_ket_token = '」'
+        self.emb_model = SentenceTransformer(self.configs.address.emb_model)
         self.client = OpenAI(
-            base_url=url,
-            api_key=api_key,
+            base_url=self.configs.address.llm_api_url,
+            api_key=self.configs.address.llm_api_key,
         )
-        self.model_name = model_name
+        self.model_name = self.configs.address.chat_model
+        self.load_collection()
+        
+    def load_collection(self):
+        client = chromadb.PersistentClient(path=self.configs.db.db_path)
+        self.collection = client.get_collection(self.configs.db.collection_name)
     def init_prompt(self, chara: str, query: str, situation: str = "", n_results: int = 5) -> list:
         """
         Initialize the prompt for the chatbot. This function constructs a prompt with classic scenes for the given character,
@@ -43,13 +50,13 @@ class ChatWaifu(object):
         ]
         return message
     
-    def add_user_message_and_request(self, query, message, generation_configs: dict):
+    def request_completion_with_user_message(self, query, message, generation_configs: dict):
         message.append({
             'role':'user',
             'content': f"ユーザ: {self.dialogue_bra_token}{query}{self.dialogue_ket_token}"
         })
-        message, completion = self.request_completion(message, generation_configs)
-        return message, completion
+        message = self.request_completion(message, generation_configs)
+        return message
     
     def request_completion(self, message, generation_configs: dict):
         """
@@ -69,4 +76,4 @@ class ChatWaifu(object):
             **generation_configs,
         )
         message.append(completion.choices[0].message.model_dump())
-        return message, completion
+        return message, completion.id
