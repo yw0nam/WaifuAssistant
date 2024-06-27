@@ -1,9 +1,0 @@
-address:
-  emb_model: pkshatech/GLuCoSE-base-ja
-  chat_model: spow12/ChatWaifu_v1.0
-  url: http://localhost:8000/v1
-  api_key: token-abc123
-
-db:
-  db_path: /data2/datas/db/visual_novel/data/
-  collection_name: chat_RAG_GLuCoSE-base-ja

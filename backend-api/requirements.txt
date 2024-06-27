@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+omegaconf
+pydantic
+huggingface_hub
+openai
+sentence-transformers
+chromadb
+sentencepiece

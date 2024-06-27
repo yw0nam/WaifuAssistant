@@ -1,19 +1,59 @@
-version: '3'
+version: '3.8'
+
 services:
-  chatbot-website:
-    build: ./chatbot-website
+  # vllm-openai:
+  #   image: vllm/vllm-openai:latest
+  #   runtime: nvidia
+  #   environment:
+  #     - NVIDIA_VISIBLE_DEVICES=0
+  #   volumes:
+  #     - ./backend-api/chat_templates:/app/chat_templates
+  #     - /data2/huggingface_cache/huggingface:/root/.cache/huggingface
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             count: 0
+  #             capabilities: [gpu]
+  #   ipc: host
+  #   ports:
+  #     - "8000:8000"
+  #   command: [
+  #     "--model", "spow12/ChatWaifu_v1.0",
+  #     "--dtype", "bfloat16",
+  #     "--chat-template", "/app/chat_templates/Vectus-v1.jinja",
+  #     "--api-key", "token-abc123",
+  #     "--max-seq-len-to-capture", "128000"
+  #   ]
+
+  fastapi-app:
+    build:
+      context: ./backend-api
+      dockerfile: Dockerfile
     ports:
-      - "3000:3000"
-    # depends_on:
-    #   - chatbot-api
-    #   - tts-api
+      - "8001:8000"
+    volumes:
+      - ./backend-api:/app
+      - /data2/datas/db/visual_novel/data/:/app/chromadb/visual_novel/data/
+    environment:
+      - PYTHONUNBUFFERED=1
+      - NVIDIA_VISIBLE_DEVICES=0
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 0
+              capabilities: [gpu]
+    command: ["uvicorn", "WaifuChat.app:app", "--host", "0.0.0.0", "--port", "8000"]
 
-  # chatbot-api:
-  #   build: ./chatbot-api
-  #   ports:
-  #     - "5001:5001"
-
-  # tts-api:
-  #   build: ./tts-api
-  #   ports:
-  #     - "5002:5002"
+  tts-api:
+    build:
+      context: ./tts-api
+      dockerfile: Dockerfile
+    volumes:
+      - ./backend-api:/app
+    ports:
+      - "7860:7860"
+    command: ["python", "server_editor.py", "--line_length", "50", "--line_count", "3", "--skip_static_files", "--skip_default_models", "--port", "7860"]
