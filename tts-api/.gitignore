@@ -1,0 +1,34 @@
+.vscode/
+
+__pycache__/
+venv/
+.ipynb_checkpoints/
+
+/*.yml
+!/default_config.yml
+# /bert/*/*.bin
+/bert/*/*.h5
+/bert/*/*.model
+/bert/*/*.safetensors
+/bert/*/*.msgpack
+/bert*
+model_assets*
+/pretrained/*.safetensors
+/pretrained/*.pth
+
+/pretrained_jp_extra/*.safetensors
+/pretrained_jp_extra/*.pth
+
+/slm/*/*.bin
+
+/scripts/test/
+*.zip
+*.csv
+*.bak
+/mos_results/
+
+safetensors.ipynb
+*.wav
+
+# pyopenjtalk's dictionary
+*.dic
