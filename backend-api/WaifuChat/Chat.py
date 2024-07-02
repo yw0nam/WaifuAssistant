@@ -22,7 +22,7 @@ class ChatWaifu(object):
     def load_collection(self):
         client = chromadb.PersistentClient(path=self.configs.db.db_path)
         self.collection = client.get_collection(self.configs.db.collection_name)
-    def init_prompt(self, chara: str, query: str, situation: str = "", n_results: int = 5) -> list:
+    def init_prompt(self, chara: str, query: str, history: str = "", situation: str = "", n_results: int = 5) -> list:
         """
         Initialize the prompt for the chatbot. This function constructs a prompt with classic scenes for the given character,
         user's query, and situation.
@@ -47,7 +47,7 @@ class ChatWaifu(object):
                 'content': self.chara_background[chara]
             },
             {
-                'content': "Classic scenes for the role are as follows:\n" + "\n###\n".join(context_ls) + self.situation_text + f"ユーザ: {self.dialogue_bra_token}{query}{self.dialogue_ket_token}",
+                'content': "Classic scenes for the role are as follows:\n" + "\n###\n".join(context_ls) + self.situation_text + history +f"ユーザ: {self.dialogue_bra_token}{query}{self.dialogue_ket_token}",
                 'role': 'user'
             }
         ]

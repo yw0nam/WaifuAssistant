@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import Response
+from fastapi.responses import Response, JSONResponse
 from scipy.io import wavfile
 from io import BytesIO
 from WaifuChat.Chat import ChatWaifu
@@ -29,12 +29,13 @@ waifuchat = ChatWaifu(configs=configs, chara_background=chara_background)
 # Move dictionary to db
 chat_dicts = {}
 # Endpoint for init_prompt_and_comp
-@app.post("/init_prompt_and_comp", response_model=CompletionResponse)
+@app.post("/init_prompt_and_comp")
 def init_prompt_and_completion(request: InitPromptRequest):
     try:
         message = waifuchat.init_prompt(
             chara=request.chara, 
-            query=request.query, 
+            query=request.query,
+            history=request.history,
             situation=request.situation
         )            
         message, chat_id = waifuchat.request_completion(
@@ -42,8 +43,7 @@ def init_prompt_and_completion(request: InitPromptRequest):
                 request.generation_config
             )
         chat_dicts[chat_id] = message
-        chara_response = message[-1]['content']
-        return CompletionResponse(chara_response=chara_response, chat_id=chat_id)
+        return JSONResponse(message)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -65,8 +65,7 @@ def request_completion(request: CompletionRequest):
                 request.generation_config
             )   
         chat_dicts[request.chat_id] = message
-        chara_response = message[-1]['content']
-        return CompletionResponse(chara_response=chara_response, chat_id=chat_id)
+        return JSONResponse(message)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

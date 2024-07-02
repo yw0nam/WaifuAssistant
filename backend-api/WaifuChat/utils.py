@@ -18,6 +18,7 @@ def load_chara_background_dict(repo_id='spow12/ChatWaifu', filename='system_dict
 class InitPromptRequest(BaseModel):
     chara: str
     query: str
+    history: Optional[str] = ""
     situation: Optional[str] = ""
     generation_config: Optional[dict] = {'top_p': 0.5, 'temperature': 0.9}
     
@@ -28,7 +29,7 @@ class CompletionRequest(BaseModel):
     generation_config: Optional[dict] = {'top_p': 0.5, 'temperature': 0.9}
 
 class CompletionResponse(BaseModel):
-    chara_response: str
+    chara_response: dict
     chat_id: str
     
 class AudioRequest(BaseModel):
