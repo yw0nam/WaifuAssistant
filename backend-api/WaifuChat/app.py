@@ -1,11 +1,15 @@
 from fastapi import FastAPI, HTTPException
-from fastapi.responses import JSONResponse
+from fastapi.responses import Response
+from scipy.io import wavfile
+from io import BytesIO
 from WaifuChat.Chat import ChatWaifu
 from omegaconf import OmegaConf
 from WaifuChat.utils import (
     InitPromptRequest,
     CompletionRequest,
     CompletionResponse,
+    AudioRequest,
+    AudioResponse,
     load_chara_background_dict,
 )
 
@@ -49,9 +53,9 @@ def request_completion(request: CompletionRequest):
     try:
         if request.chat_id == "":
             raise HTTPException(status_code=500, detail="You shoud initilize a chat first")
-        if request.user_query != "":
+        if request.query != "":
             message, chat_id = waifuchat.request_completion_with_user_message(
-                request.user_query,
+                request.query,
                 chat_dicts[request.chat_id],
                 request.generation_config
             )
@@ -65,3 +69,14 @@ def request_completion(request: CompletionRequest):
         return CompletionResponse(chara_response=chara_response, chat_id=chat_id)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/request_tts", response_class=AudioResponse)
+def request_completion(request: AudioRequest):
+    try:
+        wav = waifuchat.request_tts(request.chara, request.chara_response)
+        with BytesIO() as wavContent:
+            wavfile.write(wavContent, configs.tts_configs.sr, wav)
+            return Response(content=wavContent.getvalue(), media_type="audio/wav")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    

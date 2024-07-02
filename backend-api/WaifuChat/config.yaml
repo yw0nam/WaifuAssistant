@@ -3,6 +3,7 @@ address:
   chat_model: spow12/ChatWaifu_v1.0
   llm_api_url: http://vllm-openai:8000/v1
   llm_api_key: token-abc123
+  tts_api_url: http://tts-api:7860/api
 
 db:
   db_path: /app/chromadb/visual_novel/data
@@ -11,3 +12,8 @@ db:
 generation_configs:
   temperature: 0.5
   top_p: 0.95
+
+tts_configs:
+  sr: 16000
+  model: 'visual_novel'
+  modelFile: model_assets/visual_novel/visual_novel_e56_s50000.safetensors

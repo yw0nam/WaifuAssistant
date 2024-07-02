@@ -261,7 +261,7 @@ class SynthesisRequest(BaseModel):
     moraToneList: list[MoraTone]
     style: str = DEFAULT_STYLE
     styleWeight: float = DEFAULT_STYLE_WEIGHT
-    assistText: str = "どうして私の意見を無視するの？許せない、ムカつく！死ねばいいのに"
+    assistText: str = ""
     assistTextWeight: float = DEFAULT_ASSIST_TEXT_WEIGHT
     speed: float = 1.0
     noise: float = DEFAULT_NOISE
@@ -359,6 +359,7 @@ def multi_synthesis(request: MultiSynthesisRequest):
                 detail=f"Failed to load model {req.model} from {req.modelFile}, {e}",
             )
         text = req.text
+        print(req.moraToneList)
         kata_tone_list = [
             (mora_tone.mora, mora_tone.tone) for mora_tone in req.moraToneList
         ]

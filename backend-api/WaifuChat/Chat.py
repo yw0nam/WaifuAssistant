@@ -1,15 +1,18 @@
 from openai import OpenAI
 from sentence_transformers import SentenceTransformer
 import chromadb
-
+import requests
+from omegaconf import DictConfig
+import librosa
+from io import BytesIO
 class ChatWaifu(object):
-    def __init__(self, configs, chara_background):
+    def __init__(self, configs: DictConfig, chara_background: dict):
         self.configs = configs
         self.chara_background = chara_background
         self.dialogue_bra_token = '「'
         self.dialogue_ket_token = '」'
         self.emb_model = SentenceTransformer(self.configs.address.emb_model)
-        self.client = OpenAI(
+        self.openai_client = OpenAI(
             base_url=self.configs.address.llm_api_url,
             api_key=self.configs.address.llm_api_key,
         )
@@ -70,10 +73,29 @@ class ChatWaifu(object):
         Returns:
         - tuple: A tuple containing the updated message (list) and the completion object.
         """
-        completion = self.client.chat.completions.create(
+        completion = self.openai_client.chat.completions.create(
             model=self.model_name,
             messages=message,
             **generation_configs,
         )
         message.append(completion.choices[0].message.model_dump())
         return message, completion.id
+    
+    def request_tts(self, chara, chara_response):
+        moratone = requests.post(
+            url=self.configs.address.tts_api_url + '/g2p',
+            json={'text': chara_response}
+        ).json()
+        wav = requests.post(
+            url=self.configs.address.tts_api_url + '/synthesis',
+            json={
+                'text': chara_response,
+                'model': self.configs.tts_configs.model,
+                'modelFile': self.configs.tts_configs.modelFile,
+                'speaker': chara,
+                'style': chara,
+                'moraToneList': moratone
+            }
+        )
+        wav, _ = librosa.load(BytesIO(wav.content), sr=self.configs.tts_configs.sr)
+        return wav

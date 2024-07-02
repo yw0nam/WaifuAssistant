@@ -2,6 +2,7 @@ import json
 from huggingface_hub import hf_hub_download
 from pydantic import BaseModel
 from typing import Optional
+from fastapi.responses import Response
 
 def load_chara_background_dict(repo_id='spow12/ChatWaifu', filename='system_dict.json', local_dir='./'):
     try:
@@ -13,6 +14,7 @@ def load_chara_background_dict(repo_id='spow12/ChatWaifu', filename='system_dict
             chara_background_dict = json.load(f)
     return chara_background_dict
 
+# For Chat API
 class InitPromptRequest(BaseModel):
     chara: str
     query: str
@@ -21,11 +23,17 @@ class InitPromptRequest(BaseModel):
     
 class CompletionRequest(BaseModel):
     chat_id: str = ""
-    user_query: Optional[str] = ""
+    query: str= ""
+    chara: str
     generation_config: Optional[dict] = {'top_p': 0.5, 'temperature': 0.9}
 
 class CompletionResponse(BaseModel):
     chara_response: str
     chat_id: str
     
-    
+class AudioRequest(BaseModel):
+    chara: str
+    chara_response: str
+
+class AudioResponse(Response):
+    media_type = "audio/wav"
