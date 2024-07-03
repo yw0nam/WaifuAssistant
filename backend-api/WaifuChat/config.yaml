@@ -10,8 +10,8 @@ db:
   collection_name: chat_RAG_GLuCoSE-base-ja
 
 generation_configs:
-  temperature: 0.5
-  top_p: 0.95
+  temperature: 0.8
+  top_p: 0.9
 
 tts_configs:
   sr: 16000

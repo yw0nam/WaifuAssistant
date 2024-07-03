@@ -5,7 +5,7 @@ services:
     image: vllm/vllm-openai:latest
     runtime: nvidia
     environment:
-      - NVIDIA_VISIBLE_DEVICES=1
+      - NVIDIA_VISIBLE_DEVICES=0
     volumes:
       - ./backend-api/chat_templates:/app/chat_templates
       - /data2/huggingface_cache/huggingface:/root/.cache/huggingface
@@ -38,7 +38,7 @@ services:
       - /data2/datas/db/visual_novel/data/:/app/chromadb/visual_novel/data/
     environment:
       - PYTHONUNBUFFERED=1
-      - NVIDIA_VISIBLE_DEVICES=2
+      - NVIDIA_VISIBLE_DEVICES=1
     deploy:
       resources:
         reservations:
@@ -67,7 +67,7 @@ services:
     ports:
       - "7860:7860"
     environment:
-      - NVIDIA_VISIBLE_DEVICES=2
+      - NVIDIA_VISIBLE_DEVICES=1
     deploy:
       resources:
         reservations:

@@ -1,14 +1,15 @@
 import gradio as gr
 import requests
-
+import re
 api_url = 'http://backend:8001/'
 
-def fake(query, histories, chara, situation):
+def process(histories: list, query, chara, situation):
     prev_message = ""
     if histories != []:
         for history in histories:
-            history[0] = "ユーザー:「" + history[0] + "」"
-            prev_message += "\n".join(history)
+            history_user = "ユーザー:「" + history[0] + "」"
+            history_chara = history[1]
+            prev_message += history_user + history_chara
     
     res = requests.post(
         url=api_url+'/init_prompt_and_comp',
@@ -19,14 +20,43 @@ def fake(query, histories, chara, situation):
             'history': prev_message
         }
     ).json()
-    return res[-1]['content'] + '」'
+    wav_res = requests.post(
+        url=api_url+'/request_tts',
+        json={
+            'chara': chara,
+            'chara_response': re.sub('「|」', '', res[-1]['content'].split(':')[1])
+        }
+    )
+    audio_filepath = 'response.wav'
+    with open(audio_filepath, "wb") as f:
+        f.write(wav_res.content)
+    
+    histories.append((query, res[-1]['content']+'」',))
+    return histories, audio_filepath
 
-demo = gr.ChatInterface(
-    fake, 
-    additional_inputs=[
-        gr.Textbox(value='ムラサメ', label="You can choose one character to chat: ムラサメ,芦花,七海,愛衣,羽月,あやせ,涼音,芳乃,ナツメ,茉子,レナ,小春,栞那,茉優,千咲,希", ),
-        gr.Textbox(value='', label="situation you can set this what you want", )
-    ],
-)
+def clear_history():
+    return [], None
+
+def create_ui():
+    with gr.Blocks() as demo:
+        chatbot = gr.Chatbot(label="Chat with Audio")
+        with gr.Row():
+            query = gr.Textbox(show_label=False, placeholder="Enter your message")
+            send_button = gr.Button("Send")
+            clear_button = gr.Button("Clear History")
+        
+        chara = gr.Textbox(value='ムラサメ', label="Character")
+        situation = gr.Textbox(value='', label="Situation")
+        
+        audio_output = gr.Audio(label="Audio Response", type="filepath")
+        
+        def on_send_click(history, query, chara, situation):
+            return process(history, query, chara, situation)
+        
+        send_button.click(on_send_click, inputs=[chatbot, query, chara, situation], outputs=[chatbot, audio_output])
+        clear_button.click(clear_history, outputs=[chatbot, audio_output])
+    return demo
+
 if __name__ == '__main__':
-    demo.launch(server_port=3000, debug=True)
+    ui = create_ui()
+    ui.launch(server_port=3000, debug=True)
