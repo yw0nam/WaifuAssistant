@@ -53,7 +53,7 @@ class ChatWaifu(object):
         ]
         return message
     
-    def request_completion_with_user_message(self, query, message, generation_configs: dict):
+    def request_completion_with_user_message(self, query:str, message:list, generation_configs: dict):
         message.append({
             'role':'user',
             'content': f"ユーザ: {self.dialogue_bra_token}{query}{self.dialogue_ket_token}"
@@ -61,7 +61,7 @@ class ChatWaifu(object):
         message = self.request_completion(message, generation_configs)
         return message
     
-    def request_completion(self, message, generation_configs: dict):
+    def request_completion(self, message:list, generation_configs: dict):
         """
         This function sends a completion request to the OpenAI API using the provided message and generation configurations.
         It appends the model's response to the message and returns the updated message and the completion object.

@@ -9,10 +9,6 @@ db:
   db_path: /app/chromadb/visual_novel/data
   collection_name: chat_RAG_GLuCoSE-base-ja
 
-generation_configs:
-  temperature: 0.8
-  top_p: 0.9
-
 tts_configs:
   sr: 16000
   model: 'visual_novel'
