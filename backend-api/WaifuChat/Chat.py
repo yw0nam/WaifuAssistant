@@ -6,23 +6,23 @@ from omegaconf import DictConfig
 import librosa
 from io import BytesIO
 class ChatWaifu(object):
-    def __init__(self, configs: DictConfig, chara_background: dict):
+    def __init__(self, configs: DictConfig, chara_background: dict, sample_chat: dict):
         self.configs = configs
         self.chara_background = chara_background
-        self.dialogue_bra_token = '「'
-        self.dialogue_ket_token = '」'
-        self.emb_model = SentenceTransformer(self.configs.address.emb_model)
+        self.sample_chat = sample_chat
+        # self.emb_model = SentenceTransformer(self.configs.address.emb_model)
         self.openai_client = OpenAI(
             base_url=self.configs.address.llm_api_url,
             api_key=self.configs.address.llm_api_key,
         )
         self.model_name = self.configs.address.chat_model
-        self.load_collection()
+        self.collection = None
+        # self.load_collection()
         
-    def load_collection(self):
-        client = chromadb.PersistentClient(path=self.configs.db.db_path)
-        self.collection = client.get_collection(self.configs.db.collection_name)
-    def init_prompt(self, chara: str, query: str, history: str = "", situation: str = "", n_results: int = 5) -> list:
+    # def load_collection(self):
+    #     client = chromadb.PersistentClient(path=self.configs.db.db_path)
+    #     self.collection = client.get_collection(self.configs.db.collection_name)
+    def init_prompt(self, chara: str, query: str, situation: str = "", n_results: int = 5) -> list:
         """
         Initialize the prompt for the chatbot. This function constructs a prompt with classic scenes for the given character,
         user's query, and situation.
@@ -37,17 +37,20 @@ class ChatWaifu(object):
         - list: A list of dictionaries representing the prompt. Each dictionary contains 'role' and 'content' keys.
         """
         self.situation_text = f"""\n\n## Scene Background{situation}\n\nConversation start at here.\n\n"""
-        metadatas = self.collection.query(self.emb_model.encode(query).tolist(), where={'target_chara': chara,}, n_results=n_results)
-        context_ls = []
-        for metadata in metadatas['metadatas'][0]:
-            context_ls.append(f"{metadata['context']}\n{metadata['target_chara']}:{metadata['target_sentence']}")
+        if self.collection:
+            metadatas = self.collection.query(self.emb_model.encode(query).tolist(), where={'target_chara': chara,}, n_results=n_results)
+            context_ls = []
+            for metadata in metadatas['metadatas'][0]:
+                context_ls.append(f"{metadata['context']}\n{metadata['target_chara']}:{metadata['target_sentence']}")
+        else:
+            context_ls = self.sample_chat[chara]
         message = [
+            # {
+            #     'role' : 'system',
+            #     'content': self.chara_background[chara]
+            # },
             {
-                'role' : 'system',
-                'content': self.chara_background[chara]
-            },
-            {
-                'content': "Classic scenes for the role are as follows:\n" + "\n###\n".join(context_ls) + self.situation_text + history +f"ユーザ: {self.dialogue_bra_token}{query}{self.dialogue_ket_token}",
+                'content': f"{self.chara_background[chara]}\nClassic scenes for the role are as follows:\n" + "\n###\n".join(context_ls) + self.situation_text +f"ユーザー: {query}",
                 'role': 'user'
             }
         ]
@@ -56,7 +59,7 @@ class ChatWaifu(object):
     def request_completion_with_user_message(self, query:str, message:list, generation_configs: dict):
         message.append({
             'role':'user',
-            'content': f"ユーザ: {self.dialogue_bra_token}{query}{self.dialogue_ket_token}"
+            'content': f"ユーザー: {query}"
         })
         message = self.request_completion(message, generation_configs)
         return message
@@ -79,7 +82,7 @@ class ChatWaifu(object):
             **generation_configs,
         )
         message.append(completion.choices[0].message.model_dump())
-        return message, completion.id
+        return message
     
     def request_tts(self, chara, chara_response):
         moratone = requests.post(

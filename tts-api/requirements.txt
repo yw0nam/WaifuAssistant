@@ -2,6 +2,7 @@
 # cn2an
 # faster-whisper==0.10.1
 fastapi
+uvicorn
 # g2p_en
 # GPUtil
 # gradio

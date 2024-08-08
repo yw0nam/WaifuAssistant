@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   vllm-openai:
-    image: vllm/vllm-openai:latest
+    image: vllm/vllm-openai:v0.5.4
     runtime: nvidia
     environment:
       - NVIDIA_VISIBLE_DEVICES=0
@@ -20,11 +20,12 @@ services:
     ports:
       - "8000:8000"
     command: [
-      "--model", "spow12/ChatWaifu_v1.0",
+      "--model", "spow12/ChatWaifu_v1.2",
       "--dtype", "bfloat16",
-      "--chat-template", "/app/chat_templates/Vectus-v1.jinja",
+      "--chat-template", "/app/chat_templates/mistral_nemo.jinja",
       "--api-key", "token-abc123",
-      "--max-seq-len-to-capture", "128000"
+      "--max-seq-len-to-capture", "128000",
+      "--max_model_len", "8192"
     ]
 
   backend:

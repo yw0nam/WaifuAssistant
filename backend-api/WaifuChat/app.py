@@ -11,11 +11,13 @@ from WaifuChat.utils import (
     AudioRequest,
     AudioResponse,
     load_chara_background_dict,
+    load_sample_chat_dict
 )
 
 configs = OmegaConf.load('./WaifuChat/config.yaml')
 
 chara_background = load_chara_background_dict()
+sample_chat = load_sample_chat_dict()
 app = FastAPI(
     title="Inference API",
     description="API for speech inference using binary WAV data",
@@ -23,11 +25,10 @@ app = FastAPI(
     redoc_url="/redoc",
     openapi_url="/openapi.json",
 )
-waifuchat = ChatWaifu(configs=configs, chara_background=chara_background)
+waifuchat = ChatWaifu(configs=configs, chara_background=chara_background, sample_chat=sample_chat)
 
 # To do:
 # Move dictionary to db
-chat_dicts = {}
 # Endpoint for init_prompt_and_comp
 @app.post("/init_prompt_and_comp")
 def init_prompt_and_completion(request: InitPromptRequest):
@@ -35,14 +36,12 @@ def init_prompt_and_completion(request: InitPromptRequest):
         message = waifuchat.init_prompt(
             chara=request.chara, 
             query=request.query,
-            history=request.history,
             situation=request.situation
-        )            
-        message, chat_id = waifuchat.request_completion(
+        )
+        message = waifuchat.request_completion(
                 message,
                 request.generation_config
             )
-        chat_dicts[chat_id] = message
         return JSONResponse(message)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -54,17 +53,16 @@ def request_completion(request: CompletionRequest):
         if request.chat_id == "":
             raise HTTPException(status_code=500, detail="You shoud initilize a chat first")
         if request.query != "":
-            message, chat_id = waifuchat.request_completion_with_user_message(
+            message = waifuchat.request_completion_with_user_message(
                 request.query,
-                chat_dicts[request.chat_id],
+                request.history,
                 request.generation_config
             )
         else:
             message = waifuchat.request_completion(
-                chat_dicts[request.chat_id],
+                message,
                 request.generation_config
             )   
-        chat_dicts[request.chat_id] = message
         return JSONResponse(message)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

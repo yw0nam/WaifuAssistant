@@ -7,7 +7,7 @@ def process(histories: list, query, chara, situation, top_p, temperature):
     prev_message = ""
     if histories != []:
         for history in histories:
-            history_user = "ユーザー:「" + history[0] + "」"
+            history_user = "ユーザー:" + history[0]
             history_chara = history[1]
             prev_message += history_user + history_chara
     
@@ -24,11 +24,12 @@ def process(histories: list, query, chara, situation, top_p, temperature):
             },
         }
     ).json()
+    print(res)
     wav_res = requests.post(
         url=api_url+'/request_tts',
         json={
             'chara': chara,
-            'chara_response': re.sub('「|」', '', res[-1]['content'].split(':')[1])+ '。'
+            'chara_response': res[-1]['content'].split(':')[1]+ '。'
         }
     )
     audio_filepath = 'response.wav'
