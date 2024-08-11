@@ -1,6 +1,6 @@
 from openai import OpenAI
-from sentence_transformers import SentenceTransformer
-import chromadb
+# from sentence_transformers import SentenceTransformer
+# import chromadb
 import requests
 from omegaconf import DictConfig
 import librosa
@@ -11,9 +11,9 @@ class ChatWaifu(object):
         self.chara_background = chara_background
         self.sample_chat = sample_chat
         # self.emb_model = SentenceTransformer(self.configs.address.emb_model)
-        self.openai_client = OpenAI(
+        self.vllm_client = OpenAI(
             base_url=self.configs.address.llm_api_url,
-            api_key=self.configs.address.llm_api_key,
+            api_key=self.configs.address.api_key,
         )
         self.model_name = self.configs.address.chat_model
         self.collection = None
@@ -76,12 +76,16 @@ class ChatWaifu(object):
         Returns:
         - tuple: A tuple containing the updated message (list) and the completion object.
         """
-        completion = self.openai_client.chat.completions.create(
+        completion = self.vllm_client.chat.completions.create(
             model=self.model_name,
             messages=message,
             **generation_configs,
         )
-        message.append(completion.choices[0].message.model_dump())
+        completion = completion.choices[0].message.model_dump()
+        message.append({
+            'role': 'assistant',
+            'content': completion['content']
+        })
         return message
     
     def request_tts(self, chara, chara_response):

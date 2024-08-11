@@ -1,10 +1,11 @@
 fastapi
 uvicorn
+websockets
 omegaconf
 pydantic
 huggingface_hub
 openai
-sentence-transformers
 chromadb
+sentence-transformers
 sentencepiece
 librosa

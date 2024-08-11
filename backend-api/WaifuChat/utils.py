@@ -37,11 +37,19 @@ class CompletionRequest(BaseModel):
 
 class CompletionResponse(BaseModel):
     chara_response: list[dict]
-    chat_id: str
     
-class AudioRequest(BaseModel):
+class TTSRequest(BaseModel):
     chara: str
     chara_response: str
 
-class AudioResponse(Response):
+class TTSResponse(Response):
     media_type = "audio/wav"
+    
+class DBStoreRequest(BaseModel):
+    document: str
+    messages: str
+    chara: str
+    id: str
+
+class DBStoreResponse(BaseModel):
+    success: str

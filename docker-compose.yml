@@ -20,7 +20,7 @@ services:
     ports:
       - "8000:8000"
     command: [
-      "--model", "spow12/ChatWaifu_v1.2",
+      "--model", "spow12/ChatWaifu_v1.2.1",
       "--dtype", "bfloat16",
       "--chat-template", "/app/chat_templates/mistral_nemo.jinja",
       "--api-key", "token-abc123",
@@ -37,6 +37,7 @@ services:
     volumes:
       - ./backend-api:/app
       - /data2/datas/db/visual_novel/data/:/app/chromadb/visual_novel/data/
+      - /data2/huggingface_cache/huggingface:/root/.cache/huggingface
     environment:
       - PYTHONUNBUFFERED=1
       - NVIDIA_VISIBLE_DEVICES=1
@@ -49,15 +50,15 @@ services:
               capabilities: [gpu]
     command: ["uvicorn", "WaifuChat.app:app", "--host", "0.0.0.0", "--port", "8001"]
 
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
-    volumes:
-      - ./frontend:/app
-    command: ["python", "-u", "app.py"]
+  # frontend:
+  #   build:
+  #     context: ./frontend
+  #     dockerfile: Dockerfile
+  #   ports:
+  #     - "3000:3000"
+  #   volumes:
+  #     - ./frontend:/app
+  #   command: ["python", "-u", "app.py"]
 
   tts:
     build:
@@ -76,4 +77,21 @@ services:
             - driver: nvidia
               count: 0
               capabilities: [gpu]
-    command: ["python", "server_editor.py", "--line_length", "50", "--line_count", "3", "--skip_static_files", "--skip_default_models", "--port", "7860"]
+    command: ["python", "server_editor.py", "--line_length", "50", "--line_count", "3", "--skip_static_files", "--skip_default_models", "--port", "7860"] 
+  asr:
+    image: fedirz/faster-whisper-server:latest-cuda
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=1
+      - OPENAI_API_KEY=token-abc123
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 0
+              capabilities: [gpu]
+    ports:
+      - "8002:8000"
+    volumes:
+      - /data2/huggingface_cache/huggingface:/root/.cache/huggingface
