@@ -14,7 +14,7 @@ The goal of this project is that the girl recognize user's personality, emotion 
 - [Chatbot](https://huggingface.co/spow12/ChatWaifu_v1.2.1)
 - [TTS](https://huggingface.co/spow12/visual_novel_tts)
 - [ASR](https://huggingface.co/spow12/Visual-novel-transcriptor)
-- [Model](https://denchisoft.com/)
+- [VtubeStudio](https://denchisoft.com/)
 
 ## WIP feature
 
@@ -57,6 +57,8 @@ conda create -n WaifuAssistant_local python=3.10
 conda activate WaifuAssistant_local
 pip install -r requirements.txt
 ```
+- Install [VTS desktop audio plugin](https://www.youtube.com/watch?v=IiZ0JrGd6BQ&t=11s) by [Lua Lucky](https://www.youtube.com/watch?v=IiZ0JrGd6BQ&t=11s)
+- open it and connect to Vtube Studio
 
 After that, you can run the code,
 ```python
