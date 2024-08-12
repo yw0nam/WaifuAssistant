@@ -19,7 +19,7 @@ The goal of this project is that the girl recognize user's personality, emotion 
 ## WIP feature
 
 - Response with emotion
-- Response about user's emotion
+- Recongnize user's emotion
 - Recongnize User's screen 
 
 # How to run
