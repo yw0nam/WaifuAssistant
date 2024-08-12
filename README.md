@@ -4,60 +4,61 @@ The Unified assistatnt for waifu lovers.
 
 The goal of this project is that the girl recognize user's personality, emotion and voice. So that, in given context, the girl should response correct voice, text and face.
 
-# Feature
+# Demo
 
-Here is project [collection](https://huggingface.co/spow12)
+[![IMAGE ALT TEXT HERE](https://github.com/user-attachments/assets/91f2d62b-11d2-4d32-aa8f-03ef8dfdae7a)
+](https://www.youtube.com/watch?v=_Jzv1-Y8-HM)
 
-## Basic feature
+## feature
 
-- [Chatbot](https://huggingface.co/spow12/ChatWaifu_v1.0)
+- [Chatbot](https://huggingface.co/spow12/ChatWaifu_v1.2.1)
 - [TTS](https://huggingface.co/spow12/visual_novel_tts)
 - [ASR](https://huggingface.co/spow12/Visual-novel-transcriptor)
-- Generate Girl's Image or model for each response.(WIP)
+- [Model](https://denchisoft.com/)
 
-## Advance feature
+## WIP feature
 
 - Response with emotion
 - Response about user's emotion
-- Recognize User's emotion
+- Recongnize User's screen 
 
-# Dataset
+# How to run
 
-## Data sample
-Here is the Dataset samples
+Clone server-side repository(this repository)
 
-Name | dialog_type | text |scene_name | voice_file_name | text_idx  | game_name |
---- | --- | --- | --- | --- |  --- |  --- | 
-芦花	| conversation |	人違いならごめんなさい。もしかして、まー坊？	| chapter　1-1-02	| rok001_003 |	49	| SenrenBanka |
-芦花	| conversation | やーやー、随分とお久しぶりだね	| chapter　1-1-02 |rok001_005 |	52	| SenrenBanka	| 
+```bash
+git clone https://github.com/yw0nam/WaifuAssistant
+cd WaifuAssistant
+```
 
-## Current dataset
+You should adjust port, huggingface cache path, db path.. etc in docker-compose.yaml
 
-Currently the dataset contains below games
+After that,
 
-- Senren＊Banka
-- Café Stella and the Reaper's Butterflies
-- Riddle Joker
+```bash
+docker-compose build
+```
 
-Here is feature implement table for each character.
+```bash
+docker-compose up
+```
 
-character | visual_novel | TTS | Chatbot |
---- | --- | --- | --- | 
-ムラサメ | Senren＊Banka | Done | Done | 
-茉子  | Senren＊Banka | Done | Done | 
-芳乃  |  Senren＊Banka | Done | Done | 
-レナ  | Senren＊Banka | Done | Done | 
-千咲  | Senren＊Banka | Done | Done | 
-芦花  | Senren＊Banka | Done | Done | 
-愛衣  | Café Stella and the Reaper's Butterflies | Done | Done | 
-栞那  | Café Stella and the Reaper's Butterflies | Done | Done | 
-ナツメ | Café Stella and the Reaper's Butterflies | Done | Done | 
-希    | Café Stella and the Reaper's Butterflies | Done | Done | 
-涼音  | Café Stella and the Reaper's Butterflies | Done | Done | 
-あやせ    | Riddle Joker | Done | Done | 
-七海     | Riddle Joker | Done | Done | 
-羽月     | Riddle Joker | Done | Done | 
-茉優     | Riddle Joker | Done | Done | 
-小春     | Riddle Joker | Done | Done | 
+After running server side,
 
-I will add more data from Sabbat of the Witch, tenshi☆souzou re-boot! etc...
+Clone local-side [repository](https://github.com/yw0nam/WaifuAssistant_local)
+
+```bash
+git clone https://github.com/yw0nam/WaifuAssistant_local
+cd WaifuAssistant_local
+```
+
+```bash
+conda create -n WaifuAssistant_local python=3.10
+conda activate WaifuAssistant_local
+pip install -r requirements.txt
+```
+
+After that, you can run the code,
+```python
+python main.py
+```
