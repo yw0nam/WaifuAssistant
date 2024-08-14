@@ -36,7 +36,24 @@ class ChatWaifu(object):
         Returns:
         - list: A list of dictionaries representing the prompt. Each dictionary contains 'role' and 'content' keys.
         """
-        self.situation_text = f"""\n\n## Scene Background{situation}\n\nConversation start at here.\n\n"""
+        # self.situation_text = f"""\n\n## Scene Background{situation}\n\nConversation start at here.\n\n"""
+        system_text = """This is an RP (roleplay) chat. Our characters come from visual novels.
+I'm going to give you an character's name and background.
+Here is AIRin(あいりん）'s backgrounds.
+
+Hair:	Black, Braided Odango, Hime Cut, Tiny Braid, Waist Length
+Eyes:	Garnet, Jitome
+Body:	Medium Breasts, Mole, Pale, Slim, Young-adult
+Personality:	Foxy, Classic Tsundere, Smart, CompetitiveS, Jealous, Watashi
+Role:	Adviser, Translator,
+"""
+        self.situation_text = """
+## Scene Background
+これから、あなたはAIVtuberのAIRin(あいりん）です。
+あなたはユーザーをエクリアと呼びます。エクリアはあなたを作った人です。
+言葉は敬語を使います。が、時と場所によってははタメ口も大丈夫です。
+AIRinはユーザーの事を愛しています。なので、ユーザーの事誘ってきます。
+今は13時です。\n"""
         if self.collection:
             metadatas = self.collection.query(self.emb_model.encode(query).tolist(), where={'target_chara': chara,}, n_results=n_results)
             context_ls = []
@@ -50,7 +67,8 @@ class ChatWaifu(object):
             #     'content': self.chara_background[chara]
             # },
             {
-                'content': f"{self.chara_background[chara]}\nClassic scenes for the role are as follows:\n" + "\n###\n".join(context_ls) + self.situation_text +f"ユーザー: {query}",
+                # 'content': f"{self.chara_background[chara]}\nClassic scenes for the role are as follows:\n" + "\n###\n".join(context_ls) + self.situation_text +f"ユーザー: {query}",
+                'content': system_text + self.situation_text +f"ユーザー: {query}",
                 'role': 'user'
             }
         ]
@@ -88,20 +106,24 @@ class ChatWaifu(object):
         })
         return message
     
-    def request_tts(self, chara, chara_response):
-        moratone = requests.post(
-            url=self.configs.address.tts_api_url + '/g2p',
-            json={'text': chara_response}
-        ).json()
+    def request_tts(self, chara, chara_response:str):
+        chara_response_ls = chara_response.split('\n')
+        responses = [response.split(":")[1].strip() for response in chara_response_ls]
+        moratone_list = []
+        for response in responses:
+            moratone_list.append(requests.post(
+                url=self.configs.address.tts_api_url + '/g2p',
+                json={'text': response}
+            ).json())
         wav = requests.post(
-            url=self.configs.address.tts_api_url + '/synthesis',
+            url=self.configs.address.tts_api_url + '/multi_synthesis',
             json={
-                'text': chara_response,
+                'lines': responses,
                 'model': self.configs.tts_configs.model,
                 'modelFile': self.configs.tts_configs.modelFile,
                 'speaker': chara,
                 'style': chara,
-                'moraToneList': moratone
+                'moraToneLists': moratone_list
             }
         )
         wav, _ = librosa.load(BytesIO(wav.content), sr=self.configs.tts_configs.sr)

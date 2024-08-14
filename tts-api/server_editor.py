@@ -328,10 +328,28 @@ def synthesis(request: SynthesisRequest):
         return Response(content=wavContent.getvalue(), media_type="audio/wav")
 
 
+# class MultiSynthesisRequest(BaseModel):
+#     lines: list[SynthesisRequest]
+
 class MultiSynthesisRequest(BaseModel):
-    lines: list[SynthesisRequest]
-
-
+    model: str
+    modelFile: str
+    lines: list[str]
+    moraToneLists: list[list[MoraTone]]
+    style: str = DEFAULT_STYLE
+    styleWeight: float = DEFAULT_STYLE_WEIGHT
+    assistText: str = ""
+    assistTextWeight: float = DEFAULT_ASSIST_TEXT_WEIGHT
+    speed: float = 1.0
+    noise: float = DEFAULT_NOISE
+    noisew: float = DEFAULT_NOISEW
+    sdpRatio: float = DEFAULT_SDP_RATIO
+    language: Languages = Languages.JP
+    silenceAfter: float = 0.5
+    pitchScale: float = 1.0
+    intonationScale: float = 1.0
+    speaker: Optional[str] = None
+    
 @router.post("/multi_synthesis", response_class=AudioResponse)
 def multi_synthesis(request: MultiSynthesisRequest):
     lines = request.lines
@@ -342,49 +360,55 @@ def multi_synthesis(request: MultiSynthesisRequest):
         )
     audios = []
     sr = None
-    for i, req in enumerate(lines):
-        if args.line_length is not None and len(req.text) > args.line_length:
+    for i in range(len(lines)):
+        if args.line_length is not None and len(lines[i]) > args.line_length:
             raise HTTPException(
                 status_code=400,
                 detail=f"1行の文字数は{args.line_length}文字以下にしてください。",
             )
         try:
             model = model_holder.get_model(
-                model_name=req.model, model_path_str=req.modelFile
+                model_name=request.model, model_path_str=request.modelFile
             )
         except Exception as e:
             logger.error(e)
             raise HTTPException(
                 status_code=500,
-                detail=f"Failed to load model {req.model} from {req.modelFile}, {e}",
+                detail=f"Failed to load model {request.model} from {request.modelFile}, {e}",
             )
-        text = req.text
-        print(req.moraToneList)
         kata_tone_list = [
-            (mora_tone.mora, mora_tone.tone) for mora_tone in req.moraToneList
+            (mora_tone.mora, mora_tone.tone) for mora_tone in request.moraToneLists[i]
         ]
         phone_tone = kata_tone2phone_tone(kata_tone_list)
         tone = [t for _, t in phone_tone]
+        try:
+            sid = 0 if request.speaker is None else model.spk2id[request.speaker]
+        except KeyError:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Speaker {request.speaker} not found in {model.spk2id}",
+            )
         sr, audio = model.infer(
-            text=text,
-            language=req.language,
-            sdp_ratio=req.sdpRatio,
-            noise=req.noise,
-            noise_w=req.noisew,
-            length=1 / req.speed,
+            text=lines[i],
+            language=request.language,
+            sdp_ratio=request.sdpRatio,
+            noise=request.noise,
+            noise_w=request.noisew,
+            length=1 / request.speed,
             given_tone=tone,
-            style=req.style,
-            style_weight=req.styleWeight,
-            assist_text=req.assistText,
-            assist_text_weight=req.assistTextWeight,
-            use_assist_text=bool(req.assistText),
+            style=request.style,
+            style_weight=request.styleWeight,
+            assist_text=request.assistText,
+            assist_text_weight=request.assistTextWeight,
+            use_assist_text=bool(request.assistText),
             line_split=False,
-            pitch_scale=req.pitchScale,
-            intonation_scale=req.intonationScale,
+            pitch_scale=request.pitchScale,
+            intonation_scale=request.intonationScale,
+            speaker_id=sid,
         )
         audios.append(audio)
         if i < len(lines) - 1:
-            silence = int(sr * req.silenceAfter)
+            silence = int(sr * request.silenceAfter)
             audios.append(np.zeros(silence, dtype=np.int16))
     audio = np.concatenate(audios)
 

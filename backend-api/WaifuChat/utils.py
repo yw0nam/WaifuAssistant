@@ -27,13 +27,13 @@ class InitPromptRequest(BaseModel):
     chara: str
     query: str
     situation: Optional[str] = ""
-    generation_config: Optional[dict] = {'top_p': 0.5, 'temperature': 0.9}
+    generation_config: Optional[dict] = {'top_p': 0.9, 'temperature': 0.3}
     
 class CompletionRequest(BaseModel):
     chara: str
     history: list[dict]
     query: str= ""
-    generation_config: Optional[dict] = {'top_p': 0.5, 'temperature': 0.9}
+    generation_config: Optional[dict] = {'top_p': 0.9, 'temperature': 0.3}
 
 class CompletionResponse(BaseModel):
     chara_response: list[dict]
