@@ -5,7 +5,5 @@ omegaconf
 pydantic
 huggingface_hub
 openai
-chromadb
-sentence-transformers
-sentencepiece
 librosa
+pymongo

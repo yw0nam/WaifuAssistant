@@ -27,13 +27,14 @@ class InitPromptRequest(BaseModel):
     chara: str
     query: str
     situation: Optional[str] = ""
-    generation_config: Optional[dict] = {'top_p': 0.9, 'temperature': 0.3}
+    system: Optional[str] = ""
+    generation_config: Optional[dict] = {'temperature': 0.3}
     
 class CompletionRequest(BaseModel):
     chara: str
     history: list[dict]
     query: str= ""
-    generation_config: Optional[dict] = {'top_p': 0.9, 'temperature': 0.3}
+    generation_config: Optional[dict] = {'temperature': 0.3}
 
 class CompletionResponse(BaseModel):
     chara_response: list[dict]
@@ -46,10 +47,7 @@ class TTSResponse(Response):
     media_type = "audio/wav"
     
 class DBStoreRequest(BaseModel):
-    document: str
-    messages: str
+    messages: list[dict]
     chara: str
     id: str
-
-class DBStoreResponse(BaseModel):
-    success: str
+    model_version: str

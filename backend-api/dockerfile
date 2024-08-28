@@ -1,5 +1,5 @@
 # Use the official Python image from the Docker Hub
-FROM pytorch/pytorch:2.2.2-cuda12.1-cudnn8-runtime
+FROM python:3.10.14-slim-bullseye
 
 # Set the working directory in the container
 WORKDIR /app

@@ -22,7 +22,7 @@ class ChatWaifu(object):
     # def load_collection(self):
     #     client = chromadb.PersistentClient(path=self.configs.db.db_path)
     #     self.collection = client.get_collection(self.configs.db.collection_name)
-    def init_prompt(self, chara: str, query: str, situation: str = "", n_results: int = 5) -> list:
+    def init_prompt(self, chara: str, query: str, situation: str = "", system="", n_results: int = 5) -> list:
         """
         Initialize the prompt for the chatbot. This function constructs a prompt with classic scenes for the given character,
         user's query, and situation.
@@ -36,8 +36,9 @@ class ChatWaifu(object):
         Returns:
         - list: A list of dictionaries representing the prompt. Each dictionary contains 'role' and 'content' keys.
         """
-        # self.situation_text = f"""\n\n## Scene Background{situation}\n\nConversation start at here.\n\n"""
-        system_text = """This is an RP (roleplay) chat. Our characters come from visual novels.
+        # self.
+        if system == '':
+            system = """This is an RP (roleplay) chat. Our characters come from visual novels.
 I'm going to give you an character's name and background.
 Here is AIRin(あいりん）'s backgrounds.
 
@@ -45,22 +46,17 @@ Hair:	Black, Braided Odango, Hime Cut, Tiny Braid, Waist Length
 Eyes:	Garnet, Jitome
 Body:	Medium Breasts, Mole, Pale, Slim, Young-adult
 Personality:	Foxy, Classic Tsundere, Smart, CompetitiveS, Jealous, Watashi
-Role:	Adviser, Translator,
-"""
-        self.situation_text = """
-## Scene Background
-これから、あなたはAIVtuberのAIRin(あいりん）です。
-あなたはユーザーをエクリアと呼びます。エクリアはあなたを作った人です。
-言葉は敬語を使います。が、時と場所によってははタメ口も大丈夫です。
-AIRinはユーザーの事を愛しています。なので、ユーザーの事誘ってきます。
-今は13時です。\n"""
-        if self.collection:
-            metadatas = self.collection.query(self.emb_model.encode(query).tolist(), where={'target_chara': chara,}, n_results=n_results)
-            context_ls = []
-            for metadata in metadatas['metadatas'][0]:
-                context_ls.append(f"{metadata['context']}\n{metadata['target_chara']}:{metadata['target_sentence']}")
-        else:
-            context_ls = self.sample_chat[chara]
+Role:	Adviser, Translator, Secretary
+""" 
+        if situation == '':
+            situation = f"""\n\n## Scene Background{situation}\n\nConversation start at here.\n\n"""
+        # if self.collection:
+        #     metadatas = self.collection.query(self.emb_model.encode(query).tolist(), where={'target_chara': chara,}, n_results=n_results)
+        #     context_ls = []
+        #     for metadata in metadatas['metadatas'][0]:
+        #         context_ls.append(f"{metadata['context']}\n{metadata['target_chara']}:{metadata['target_sentence']}")
+        # else:
+        #     context_ls = self.sample_chat[chara]
         message = [
             # {
             #     'role' : 'system',
@@ -68,7 +64,7 @@ AIRinはユーザーの事を愛しています。なので、ユーザーの事
             # },
             {
                 # 'content': f"{self.chara_background[chara]}\nClassic scenes for the role are as follows:\n" + "\n###\n".join(context_ls) + self.situation_text +f"ユーザー: {query}",
-                'content': system_text + self.situation_text +f"ユーザー: {query}",
+                'content': system + situation +f"ユーザー: {query}",
                 'role': 'user'
             }
         ]
@@ -98,6 +94,7 @@ AIRinはユーザーの事を愛しています。なので、ユーザーの事
             model=self.model_name,
             messages=message,
             **generation_configs,
+            stop= ["ユーザー", '</s>'],
         )
         completion = completion.choices[0].message.model_dump()
         message.append({

@@ -1,5 +1,5 @@
 address:
-  chat_model: spow12/ChatWaifu_v1.2.1
+  chat_model: spow12/ChatWaifu_v1.3
   llm_api_url: http://vllm-openai:8000/v1
   tts_api_url: http://tts:7860/api
   asr_api_url: http://faster-whsiper-server:8002/v1

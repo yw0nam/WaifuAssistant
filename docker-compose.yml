@@ -1,34 +1,36 @@
 version: '3.8'
 
 services:
-  vllm-openai:
-    image: vllm/vllm-openai:v0.5.4
-    runtime: nvidia
-    environment:
-      - NVIDIA_VISIBLE_DEVICES=0
-    volumes:
-      - ./backend-api/chat_templates:/app/chat_templates
-      - /data2/huggingface_cache/huggingface:/root/.cache/huggingface
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 0
-              capabilities: [gpu]
-    ipc: host
-    ports:
-      - "8000:8000"
-    command: [
-      "--model", "spow12/ChatWaifu_v1.2.1",
-      "--dtype", "bfloat16",
-      "--chat-template", "/app/chat_templates/mistral_nemo.jinja",
-      "--api-key", "token-abc123",
-      "--max-seq-len-to-capture", "128000",
-      "--max_model_len", "8192"
-    ]
+  # vllm-openai:
+  #   container_name: waifuassistant_vllm
+  #   image: vllm/vllm-openai:v0.5.4
+  #   runtime: nvidia
+  #   environment:
+  #     - NVIDIA_VISIBLE_DEVICES=3
+  #   volumes:
+  #     - ./backend-api/chat_templates:/app/chat_templates
+  #     - /data/huggingface_cache/huggingface:/root/.cache/huggingface
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             count: 0
+  #             capabilities: [gpu]
+  #   ipc: host
+  #   ports:
+  #     - "8000:8000"
+  #   command: [
+  #     "--model", "spow12/ChatWaifu_v1.3",
+  #     "--dtype", "bfloat16",
+  #     "--chat-template", "/app/chat_templates/mistral_nemo.jinja",
+  #     "--api-key", "token-abc123",
+  #     "--max-seq-len-to-capture", "128000",
+  #     "--max_model_len", "8192",
+  #   ]
 
   backend:
+    container_name: waifuassistant_backend
     build:
       context: ./backend-api
       dockerfile: Dockerfile
@@ -36,31 +38,13 @@ services:
       - "8001:8001"
     volumes:
       - ./backend-api:/app
-      - /data2/datas/db/visual_novel/data/:/app/chromadb/visual_novel/data/
-      - /data2/huggingface_cache/huggingface:/root/.cache/huggingface
     environment:
       - PYTHONUNBUFFERED=1
       - NVIDIA_VISIBLE_DEVICES=1
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 0
-              capabilities: [gpu]
     command: ["uvicorn", "WaifuChat.app:app", "--host", "0.0.0.0", "--port", "8001"]
 
-  # frontend:
-  #   build:
-  #     context: ./frontend
-  #     dockerfile: Dockerfile
-  #   ports:
-  #     - "3000:3000"
-  #   volumes:
-  #     - ./frontend:/app
-  #   command: ["python", "-u", "app.py"]
-
   tts:
+    container_name: waifuassistant_tts
     build:
       context: ./tts-api
       dockerfile: Dockerfile
@@ -69,7 +53,7 @@ services:
     ports:
       - "7860:7860"
     environment:
-      - NVIDIA_VISIBLE_DEVICES=1
+      - NVIDIA_VISIBLE_DEVICES=2
     deploy:
       resources:
         reservations:
@@ -77,12 +61,13 @@ services:
             - driver: nvidia
               count: 0
               capabilities: [gpu]
-    command: ["python", "server_editor.py", "--line_length", "50", "--line_count", "3", "--skip_static_files", "--skip_default_models", "--port", "7860"] 
+    command: ["python", "server_editor.py", "--line_length", "80", "--line_count", "6", "--skip_static_files", "--skip_default_models", "--port", "7860"] 
   asr:
     image: fedirz/faster-whisper-server:latest-cuda
+    container_name: waifuassistant_asr
     runtime: nvidia
     environment:
-      - NVIDIA_VISIBLE_DEVICES=1
+      - NVIDIA_VISIBLE_DEVICES=2
       - OPENAI_API_KEY=token-abc123
     deploy:
       resources:
@@ -94,4 +79,27 @@ services:
     ports:
       - "8002:8000"
     volumes:
-      - /data2/huggingface_cache/huggingface:/root/.cache/huggingface
+      - /data/huggingface_cache/huggingface:/root/.cache/huggingface
+  mongodb:
+    image: mongo:5.0.14
+    container_name: waifuassistant_mongodb
+    restart: always
+    ports:
+      - 27017:27017
+    volumes:
+      - /data2/datas/db/visual_novel/mongodb:/data/db
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=root
+      - MONGO_INITDB_ROOT_PASSWORD=1234
+      - MONGO_INITDB_DATABASE=visual_novel_db
+
+  mongo-express:
+    image: mongo-express:latest
+    container_name: waifuassistant_mongo-express
+    restart: always
+    ports:
+      - 8081:8081
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: root
+      ME_CONFIG_MONGODB_ADMINPASSWORD: 1234
+      ME_CONFIG_MONGODB_URL: mongodb://root:1234@mongodb:27017
