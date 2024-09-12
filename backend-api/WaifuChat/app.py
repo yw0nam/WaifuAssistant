@@ -3,7 +3,7 @@ from fastapi.responses import Response, JSONResponse
 from scipy.io import wavfile
 from io import BytesIO
 from WaifuChat.Chat import ChatWaifu
-from pymongo import MongoClient, UpdateOne
+from pymongo import MongoClient
 from omegaconf import OmegaConf
 from WaifuChat.utils import (
     InitPromptRequest,
@@ -76,6 +76,16 @@ def request_completion(request: CompletionRequest):
 def request_tts(request: TTSRequest):
     try:
         wav = waifuchat.request_tts(request.chara, request.chara_response)
+        with BytesIO() as wavContent:
+            wavfile.write(wavContent, configs.tts_configs.sr, wav)
+            return Response(content=wavContent.getvalue(), media_type="audio/wav")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
+@app.post("/request_multi_line_tts", response_class=TTSResponse)
+def request_multi_line_tts(request: TTSRequest):
+    try:
+        wav = waifuchat.request_multi_line_tts(request.chara, request.chara_response)
         with BytesIO() as wavContent:
             wavfile.write(wavContent, configs.tts_configs.sr, wav)
             return Response(content=wavContent.getvalue(), media_type="audio/wav")

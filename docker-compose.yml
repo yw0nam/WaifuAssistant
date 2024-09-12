@@ -1,33 +1,30 @@
 version: '3.8'
 
 services:
-  # vllm-openai:
-  #   container_name: waifuassistant_vllm
-  #   image: vllm/vllm-openai:v0.5.4
-  #   runtime: nvidia
-  #   environment:
-  #     - NVIDIA_VISIBLE_DEVICES=3
-  #   volumes:
-  #     - ./backend-api/chat_templates:/app/chat_templates
-  #     - /data/huggingface_cache/huggingface:/root/.cache/huggingface
-  #   deploy:
-  #     resources:
-  #       reservations:
-  #         devices:
-  #           - driver: nvidia
-  #             count: 0
-  #             capabilities: [gpu]
-  #   ipc: host
-  #   ports:
-  #     - "8000:8000"
-  #   command: [
-  #     "--model", "spow12/ChatWaifu_v1.3",
-  #     "--dtype", "bfloat16",
-  #     "--chat-template", "/app/chat_templates/mistral_nemo.jinja",
-  #     "--api-key", "token-abc123",
-  #     "--max-seq-len-to-capture", "128000",
-  #     "--max_model_len", "8192",
-  #   ]
+  vllm-openai:
+    container_name: waifuassistant_vllm
+    image: vllm/vllm-openai:v0.5.5
+    runtime: nvidia
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=1
+      - OMP_NUM_THREADS=8
+    volumes:
+      - /data2/model_weights/LLM/:/app/models_zoo/
+      - /data/huggingface_cache/huggingface:/root/.cache/huggingface
+    ipc: host
+    ports:
+      - "8200:8200"
+    command: [
+      "--model", "/app/models_zoo/spow12/ChatWaifu_v1.5_stock",
+      "--dtype", "bfloat16",
+      "--api-key", "token-abc123",
+      "--max-seq-len-to-capture", "128000",
+      "--max_model_len", "32768",
+      "--tensor-parallel-size", "1",
+      "--disable-frontend-multiprocessing",
+      "--served-model-name", "chat_model",
+      "--port", "8200"
+    ]
 
   backend:
     container_name: waifuassistant_backend
@@ -35,13 +32,13 @@ services:
       context: ./backend-api
       dockerfile: Dockerfile
     ports:
-      - "8001:8001"
+      - "8201:8201"
     volumes:
       - ./backend-api:/app
     environment:
       - PYTHONUNBUFFERED=1
       - NVIDIA_VISIBLE_DEVICES=1
-    command: ["uvicorn", "WaifuChat.app:app", "--host", "0.0.0.0", "--port", "8001"]
+    command: ["uvicorn", "WaifuChat.app:app", "--host", "0.0.0.0", "--port", "8201"]
 
   tts:
     container_name: waifuassistant_tts
@@ -53,7 +50,7 @@ services:
     ports:
       - "7860:7860"
     environment:
-      - NVIDIA_VISIBLE_DEVICES=2
+      - NVIDIA_VISIBLE_DEVICES=0
     deploy:
       resources:
         reservations:
@@ -61,13 +58,13 @@ services:
             - driver: nvidia
               count: 0
               capabilities: [gpu]
-    command: ["python", "server_editor.py", "--line_length", "80", "--line_count", "6", "--skip_static_files", "--skip_default_models", "--port", "7860"] 
+    command: ["python", "server_editor.py", "--line_length", "200", "--line_count", "6", "--skip_static_files", "--skip_default_models", "--port", "7860"] 
   asr:
     image: fedirz/faster-whisper-server:latest-cuda
     container_name: waifuassistant_asr
     runtime: nvidia
     environment:
-      - NVIDIA_VISIBLE_DEVICES=2
+      - NVIDIA_VISIBLE_DEVICES=0
       - OPENAI_API_KEY=token-abc123
     deploy:
       resources:
@@ -77,7 +74,9 @@ services:
               count: 0
               capabilities: [gpu]
     ports:
-      - "8002:8000"
+      - "8202:8000"
+    expose:
+      - 8202
     volumes:
       - /data/huggingface_cache/huggingface:/root/.cache/huggingface
   mongodb:
@@ -86,6 +85,8 @@ services:
     restart: always
     ports:
       - 27017:27017
+    expose:
+      - 27017
     volumes:
       - /data2/datas/db/visual_novel/mongodb:/data/db
     environment:
@@ -99,6 +100,8 @@ services:
     restart: always
     ports:
       - 8081:8081
+    expose:
+      - 8081
     environment:
       ME_CONFIG_MONGODB_ADMINUSERNAME: root
       ME_CONFIG_MONGODB_ADMINPASSWORD: 1234

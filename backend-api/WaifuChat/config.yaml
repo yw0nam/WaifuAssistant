@@ -1,8 +1,8 @@
 address:
-  chat_model: spow12/ChatWaifu_v1.3
-  llm_api_url: http://vllm-openai:8000/v1
+  chat_model: chat_model
+  llm_api_url: http://vllm-openai:8200/v1
   tts_api_url: http://tts:7860/api
-  asr_api_url: http://faster-whsiper-server:8002/v1
+  asr_api_url: http://faster-whsiper-server:8202/v1
   api_key: token-abc123
 
 db:

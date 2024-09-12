@@ -64,7 +64,8 @@ Role:	Adviser, Translator, Secretary
             # },
             {
                 # 'content': f"{self.chara_background[chara]}\nClassic scenes for the role are as follows:\n" + "\n###\n".join(context_ls) + self.situation_text +f"ユーザー: {query}",
-                'content': system + situation +f"ユーザー: {query}",
+                # 'content': system + situation +f"ユーザー: {query}",
+                'content': system + situation +f"{query}",
                 'role': 'user'
             }
         ]
@@ -73,7 +74,8 @@ Role:	Adviser, Translator, Secretary
     def request_completion_with_user_message(self, query:str, message:list, generation_configs: dict):
         message.append({
             'role':'user',
-            'content': f"ユーザー: {query}"
+            # 'content': f"ユーザー: {query}"
+            'content': f"{query}"
         })
         message = self.request_completion(message, generation_configs)
         return message
@@ -103,7 +105,7 @@ Role:	Adviser, Translator, Secretary
         })
         return message
     
-    def request_tts(self, chara, chara_response:str):
+    def request_multi_line_tts(self, chara, chara_response:str):
         chara_response_ls = chara_response.split('\n')
         responses = [response.split(":")[1].strip() for response in chara_response_ls]
         moratone_list = []
@@ -121,6 +123,24 @@ Role:	Adviser, Translator, Secretary
                 'speaker': chara,
                 'style': chara,
                 'moraToneLists': moratone_list
+            }
+        )
+        wav, _ = librosa.load(BytesIO(wav.content), sr=self.configs.tts_configs.sr)
+        return wav
+    def request_tts(self, chara, chara_response):
+        moratone = requests.post(
+            url=self.configs.address.tts_api_url + '/g2p',
+            json={'text': chara_response}
+        ).json()
+        wav = requests.post(
+            url=self.configs.address.tts_api_url + '/synthesis',
+            json={
+                'text': chara_response,
+                'model': self.configs.tts_configs.model,
+                'modelFile': self.configs.tts_configs.modelFile,
+                'speaker': chara,
+                'style': chara,
+                'moraToneList': moratone,
             }
         )
         wav, _ = librosa.load(BytesIO(wav.content), sr=self.configs.tts_configs.sr)
