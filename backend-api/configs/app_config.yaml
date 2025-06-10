@@ -1,0 +1,7 @@
+llm_configs:
+  "model": "chat_model"
+  "openai_api_key": "token-abc123"
+  "openai_api_base": "http://localhost:5532/v1"
+  "temperature": 0.6
+  "top_p": 0.9
+  "max_tokens": 4096

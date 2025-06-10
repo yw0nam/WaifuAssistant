@@ -1,9 +1,0 @@
-fastapi
-uvicorn
-websockets
-omegaconf
-pydantic
-huggingface_hub
-openai
-librosa
-pymongo
