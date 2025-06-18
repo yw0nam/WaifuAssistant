@@ -36,7 +36,7 @@ class ServeTTSRequest(BaseModel):
     references: list[ServeReferenceAudio] = []
     # Reference id
     reference_id: str | None = None
-    seed: int | None = None
+    seed: int | None = 1004
     use_memory_cache: Literal["on", "off"] = "off"
     # Normalize text for en & zh, this increase stability for numbers
     normalize: bool = True
@@ -53,12 +53,11 @@ class ServeTTSRequest(BaseModel):
 
 
 class ChatWaifu_TTS(object):
-    def __init__(self):
-        pass
+    def __init__(self, url, api_key=None):
+        self.url = url
+        self.api_key = api_key
 
-    def request_tts_stream(
-        self, url: str, api_key: str, request: ServeTTSRequest
-    ) -> bytes | None:
+    def request_tts_stream(self, request: ServeTTSRequest) -> bytes | None:
         """
         TTS 요청을 보내고 오디오 데이터를 바이트로 반환 (파일 저장 없음)
 
@@ -71,13 +70,13 @@ class ChatWaifu_TTS(object):
         }
 
         # API 키가 있는 경우 Authorization 헤더 추가
-        if api_key:
-            headers["authorization"] = f"Bearer {api_key}"
+        if self.api_key:
+            headers["authorization"] = f"Bearer {self.api_key}"
 
         try:
             # POST 요청 전송
             response = requests.post(
-                url,
+                self.url,
                 data=ormsgpack.packb(request, option=ormsgpack.OPT_SERIALIZE_PYDANTIC),
                 headers=headers,
                 timeout=30,
@@ -101,9 +100,7 @@ class ChatWaifu_TTS(object):
             print(f"❌ 예상치 못한 오류: {e}")
             return None
 
-    def request_tts_base64(
-        self, url: str, api_key: str, request: ServeTTSRequest
-    ) -> str | None:
+    def request_tts_base64(self, request: ServeTTSRequest) -> str | None:
         """
         TTS 요청을 보내고 Base64 인코딩된 오디오 데이터 반환
         WebSocket 전송에 최적화
@@ -112,17 +109,15 @@ class ChatWaifu_TTS(object):
             str: 성공 시 Base64 인코딩된 오디오 데이터
             None: 실패 시
         """
-        audio_bytes = self.request_tts_stream(url, api_key, request)
+        audio_bytes = self.request_tts_stream(request)
         if audio_bytes:
             return base64.b64encode(audio_bytes).decode("utf-8")
         return None
 
     # 기존 파일 저장 메서드는 호환성을 위해 유지
-    def request_tts(
-        self, url: str, api_key: str, output_filename: str, request: ServeTTSRequest
-    ) -> bool:
+    def request_tts(self, output_filename: str, request: ServeTTSRequest) -> bool:
         """기존 파일 저장 방식 (호환성을 위해 유지)"""
-        audio_bytes = self.request_tts_stream(url, api_key, request)
+        audio_bytes = self.request_tts_stream(request)
         if audio_bytes:
             try:
                 with open(output_filename, "wb") as f:
