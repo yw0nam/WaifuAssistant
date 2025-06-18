@@ -156,7 +156,7 @@ class ChatWaifu_LLM(object):
             #     self.llm,
             #     tools=[],  # 빈 도구 목록
             # )
-            client = MultiServerMCPClient(mcp_config)
+            client = MultiServerMCPClient(mcp_config["mcp_servers"])
 
             tools = await client.get_tools()
             logger.info(

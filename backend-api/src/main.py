@@ -53,20 +53,29 @@ def initialize_services():
     logger.info(f"▶️ MCP 설정: {len(MCP_CONFIG)}개 서버 설정됨")
 
 
-# WebSocket 엔드포인트
+# WebSocket endpoint with error handling
 @app.websocket("/ws/{client_id}")
-async def websocket_endpoint(websocket: WebSocket, client_id: int):
-    # 서비스 초기화 (첫 연결 시에만)
-    initialize_services()
+async def websocket_endpoint(websocket: WebSocket, client_id: str):
+    """WebSocket endpoint with robust error handling"""
+    try:
+        # Initialize services (only on first connection)
+        initialize_services()
+        logger.info(f"🔗 Client #{client_id} attempting to connect...")
 
-    await handle_websocket(
-        websocket=websocket,
-        client_id=client_id,
-        chat_waifu_llm=chat_waifu_llm,
-        chat_waifu_tts=chat_waifu_tts,
-        persona=PERSONA,
-        mcp_config=MCP_CONFIG,
-    )
+        await handle_websocket(
+            websocket=websocket,
+            client_id=client_id,
+            chat_waifu_llm=chat_waifu_llm,
+            chat_waifu_tts=chat_waifu_tts,
+            persona=PERSONA,
+            mcp_config=MCP_CONFIG,
+        )
+    except Exception as e:
+        logger.error(f"❌ WebSocket endpoint error for client #{client_id}: {e}")
+        import traceback
+
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        # Don't re-raise to avoid server crash
 
 
 # 개발 환경에서 Uvicorn을 사용해 FastAPI 앱을 실행

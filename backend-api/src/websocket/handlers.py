@@ -3,7 +3,7 @@ import asyncio
 import time
 from typing import Union
 from fastapi import WebSocket, WebSocketDisconnect
-from langchain_core.messages import HumanMessage, AIMessage
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from pydantic import ValidationError
 from src.services.llm_service import ChatWaifu_LLM
 from src.services.tts_service import ChatWaifu_TTS
@@ -49,7 +49,6 @@ async def parse_websocket_message(raw_data: str) -> Union[ChatRequest, PingReque
     except json.JSONDecodeError:
         # JSON 파싱 실패 시 일반 텍스트로 처리
         return ChatRequest(text=raw_data, enable_tts=True)
-        return ChatRequest(text=raw_data, enable_tts=True)
 
 
 async def send_error_response(
@@ -62,7 +61,7 @@ async def send_error_response(
 
 async def handle_chat_request(
     websocket: WebSocket,
-    client_id: int,
+    client_id: str,
     request: ChatRequest,
     chat_waifu_llm: ChatWaifu_LLM,
     message_history: list,
@@ -124,77 +123,137 @@ async def handle_ping_request(websocket: WebSocket, request: PingRequest):
 
 async def handle_websocket(
     websocket: WebSocket,
-    client_id: int,
+    client_id: str,
     chat_waifu_llm: ChatWaifu_LLM,
     chat_waifu_tts: ChatWaifu_TTS,
     persona: str,
     mcp_config: dict,
 ):
-    """WebSocket 연결 핸들러"""
-    await websocket.accept()
-    logger.info(f"Client #{client_id} 가 연결되었어요! 반가워요! 👋")
-
-    message_history = [{"role": "system", "content": persona}]
-
-    # TTS 워커 태스크 시작
-    tts_task = asyncio.create_task(
-        tts_worker(str(client_id), websocket, chat_waifu_tts)
-    )
-
+    """WebSocket connection handler with robust error handling"""
+    tts_task = None
     try:
+        await websocket.accept()
+        logger.info(f"✅ Client #{client_id} connection accepted successfully!")
+
+        # Initialize Langchain message format
+        message_history = [SystemMessage(content=persona)]
+        logger.info(f"📝 Client #{client_id} message history initialized")
+
+        # Start TTS worker task with error isolation
+        logger.info(f"🔊 Client #{client_id} starting TTS worker...")
+        try:
+            tts_task = asyncio.create_task(
+                tts_worker(str(client_id), websocket, chat_waifu_tts)
+            )
+            logger.info(f"✅ Client #{client_id} TTS worker started successfully")
+        except Exception as tts_init_error:
+            logger.error(
+                f"⚠️ Client #{client_id} TTS worker initialization failed: {tts_init_error}"
+            )
+            # Continue without TTS functionality
+
+        logger.info(
+            f"✅ Client #{client_id} initialization complete! Waiting for messages..."
+        )
+
         while True:
-            raw_data = await websocket.receive_text()
-
             try:
-                # 메시지 파싱 및 검증
-                request = await parse_websocket_message(raw_data)
+                logger.debug(f"⏳ Client #{client_id} waiting for message...")
+                raw_data = await websocket.receive_text()
+                logger.info(
+                    f"📨 Client #{client_id} message received: {raw_data[:100]}..."
+                )
 
-                # 메시지 타입별 처리
-                if isinstance(request, ChatRequest):
-                    await handle_chat_request(
-                        websocket,
-                        client_id,
-                        request,
-                        chat_waifu_llm,
-                        message_history,
-                        mcp_config["mcp_servers"],
+                try:
+                    # Parse and validate message
+                    request = await parse_websocket_message(raw_data)
+                    logger.info(
+                        f"✅ Client #{client_id} message parsed successfully: {type(request).__name__}"
                     )
-                elif isinstance(request, PingRequest):
-                    await handle_ping_request(websocket, request)
-                else:
-                    # 지원하지 않는 요청 타입
+
+                    # Handle message by type
+                    if isinstance(request, ChatRequest):
+                        await handle_chat_request(
+                            websocket,
+                            client_id,
+                            request,
+                            chat_waifu_llm,
+                            message_history,
+                            mcp_config,
+                        )
+                    elif isinstance(request, PingRequest):
+                        await handle_ping_request(websocket, request)
+                    else:
+                        # Unsupported request type
+                        await send_error_response(
+                            websocket,
+                            "Unsupported request type.",
+                            error_code="UNSUPPORTED_REQUEST_TYPE",
+                        )
+
+                except ValueError as e:
+                    logger.warning(f"Client #{client_id} invalid request: {e}")
+                    await send_error_response(
+                        websocket, str(e), error_code="INVALID_REQUEST"
+                    )
+                except Exception as e:
+                    logger.error(f"Client #{client_id} request processing error: {e}")
                     await send_error_response(
                         websocket,
-                        "지원하지 않는 요청 타입입니다.",
-                        error_code="UNSUPPORTED_REQUEST_TYPE",
+                        "Error occurred while processing request.",
+                        error_code="PROCESSING_ERROR",
                     )
 
-            except ValueError as e:
-                logger.warning(f"Client #{client_id} 잘못된 요청: {e}")
-                await send_error_response(
-                    websocket, str(e), error_code="INVALID_REQUEST"
+            except WebSocketDisconnect:
+                logger.info(
+                    f"Client #{client_id} disconnected normally. See you next time! 😊"
                 )
-            except Exception as e:
-                logger.error(f"Client #{client_id} 요청 처리 중 오류: {e}")
-                await send_error_response(
-                    websocket,
-                    "요청 처리 중 오류가 발생했습니다.",
-                    error_code="PROCESSING_ERROR",
+                break
+            except Exception as message_error:
+                logger.error(
+                    f"Client #{client_id} message handling error: {message_error}"
                 )
+                # Try to send error response, but don't crash if it fails
+                try:
+                    await send_error_response(
+                        websocket,
+                        "Connection error occurred.",
+                        error_code="CONNECTION_ERROR",
+                    )
+                except:
+                    logger.error(
+                        f"Failed to send error response to client #{client_id}"
+                    )
+                break
 
     except WebSocketDisconnect:
-        logger.info(f"Client #{client_id} 와의 연결이 끊어졌어요. 다음에 또 만나요! 😢")
+        logger.info(f"Client #{client_id} disconnected during connection. Goodbye! 😢")
     except Exception as e:
-        logger.error(f"Client #{client_id} 와의 통신 중 오류 발생: {e}")
+        logger.error(f"Client #{client_id} critical connection error: {e}")
         import traceback
 
-        traceback.print_exc()
+        logger.error(f"Traceback: {traceback.format_exc()}")
     finally:
-        # TTS 워커 정리
-        cleanup_tts_queue(str(client_id))
-        tts_task.cancel()
+        # Resource cleanup
+        logger.info(f"🧹 Client #{client_id} cleaning up resources...")
 
+        # Cleanup TTS queue
         try:
-            await websocket.close(code=1000)
-        except:
-            pass
+            cleanup_tts_queue(str(client_id))
+        except Exception as cleanup_error:
+            logger.error(f"TTS cleanup error: {cleanup_error}")
+
+        # Cancel TTS task
+        if tts_task and not tts_task.done():
+            try:
+                tts_task.cancel()
+                try:
+                    await asyncio.wait_for(tts_task, timeout=2.0)
+                except asyncio.TimeoutError:
+                    logger.warning(
+                        f"TTS task cancellation timeout for client #{client_id}"
+                    )
+            except Exception as cancel_error:
+                logger.error(f"TTS task cancellation error: {cancel_error}")
+
+        logger.info(f"✅ Client #{client_id} cleanup completed")
