@@ -16,14 +16,6 @@ This project aims to develop an interactive AI desktop assistant that communicat
 - **Modern React Frontend**: TypeScript-based web interface with real-time WebSocket communication
 - **Audio Streaming**: Real-time audio playback with base64-encoded audio streaming
 
-## ✨ 주요 기능
-
-- **실시간 음성 대화**: 사용자의 음성을 인식하고, AI가 생성한 음성으로 즉각적인 응답 제공
-- **고성능 언어 모델 (LLM)**: Langchain과 Langgraph를 활용한 맥락 기억 및 외부 도구 연동
-- **커스텀 페르소나**: `persona.yaml` 파일을 통한 AI 성격, 말투, 배경 이야기 자유 설정
-- **모듈화된 서비스 구조**: STT, LLM, TTS 등 독립적 서비스 설계로 확장성 확보
-- **외부 도구 연동 (MCP)**: Multi-Server MCP Client를 통한 무한 기능 확장
-
 ## 🏗️ System Architecture
 
 This project follows a client-server model with a **FastAPI backend** and **React TypeScript frontend**. All core logic is processed on the backend API server, while the frontend provides a modern web interface for user interaction.
