@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { WebSocketService } from '../services/websocket';
 import { 
   WebSocketResponse, 
-  ResponseType, 
   ConnectionState 
 } from '../types/websocket';
 
@@ -51,9 +50,9 @@ export const useWebSocket = (url?: string) => {
     setConnectionState(ConnectionState.DISCONNECTED);
   }, []);
 
-  const sendMessage = useCallback((text: string, enableTts: boolean = true) => {
+  const sendMessage = useCallback((text: string, enableTts: boolean = true, referenceId?: string, skipInternalReasoning: boolean = true, reasoningStartTag?: string, reasoningEndTag?: string) => {
     if (wsRef.current && connectionState === ConnectionState.CONNECTED) {
-      wsRef.current.sendChatMessage(text, enableTts);
+      wsRef.current.sendChatMessage(text, enableTts, referenceId, skipInternalReasoning, reasoningStartTag, reasoningEndTag);
     } else {
       console.warn('WebSocket not connected');
     }
@@ -62,6 +61,14 @@ export const useWebSocket = (url?: string) => {
   const sendPing = useCallback(() => {
     if (wsRef.current && connectionState === ConnectionState.CONNECTED) {
       wsRef.current.sendPing();
+    }
+  }, [connectionState]);
+
+  const interruptTTS = useCallback((reason?: string) => {
+    if (wsRef.current && connectionState === ConnectionState.CONNECTED) {
+      wsRef.current.interruptTTS(reason);
+    } else {
+      console.warn('WebSocket not connected');
     }
   }, [connectionState]);
 
@@ -95,6 +102,7 @@ export const useWebSocket = (url?: string) => {
     disconnect,
     sendMessage,
     sendPing,
+    interruptTTS,
     onMessage,
     getClientId,
     isConnected: connectionState === ConnectionState.CONNECTED

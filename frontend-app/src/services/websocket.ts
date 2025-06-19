@@ -94,11 +94,15 @@ export class WebSocketService {
     }
   }
 
-  public sendChatMessage(text: string, enableTts: boolean = true): void {
+  public sendChatMessage(text: string, enableTts: boolean = true, referenceId?: string, skipInternalReasoning: boolean = true, reasoningStartTag?: string, reasoningEndTag?: string): void {
     this.sendMessage({
       type: MessageType.CHAT,
       text,
-      enable_tts: enableTts
+      enable_tts: enableTts,
+      skip_internal_reasoning: skipInternalReasoning,
+      reference_id: referenceId,
+      reasoning_start_tag: reasoningStartTag,
+      reasoning_end_tag: reasoningEndTag
     });
   }
 
@@ -106,6 +110,13 @@ export class WebSocketService {
     this.sendMessage({
       type: MessageType.PING,
       timestamp: Date.now()
+    });
+  }
+
+  public interruptTTS(reason: string = 'user_interrupt'): void {
+    this.sendMessage({
+      type: MessageType.TTS_INTERRUPT,
+      reason
     });
   }
 

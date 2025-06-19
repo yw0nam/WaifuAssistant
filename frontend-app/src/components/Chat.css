@@ -329,6 +329,167 @@
   background: rgba(255, 255, 255, 0.5);
 }
 
+/* TTS Settings Panel */
+.tts-settings {
+  background: #2a2a2a;
+  border: 1px solid #444;
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  position: relative;
+}
+
+.tts-settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  cursor: pointer;
+}
+
+.tts-settings-title {
+  font-weight: 600;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.tts-settings-toggle {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 1.2rem;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.tts-settings-toggle:hover {
+  color: #ffffff;
+}
+
+.tts-settings-content {
+  display: grid;
+  gap: 1rem;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tts-setting-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.tts-setting-item label {
+  color: #cccccc;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.tts-checkbox {
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid #555;
+  border-radius: 4px;
+  background: #1a1a1a;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s;
+}
+
+.tts-checkbox:checked {
+  background: #007acc;
+  border-color: #007acc;
+}
+
+.tts-checkbox:checked::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.tts-input {
+  flex: 1;
+  background: #1a1a1a;
+  border: 2px solid #555;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  color: #ffffff;
+  font-size: 0.9rem;
+  transition: border-color 0.2s;
+}
+
+.tts-input:focus {
+  outline: none;
+  border-color: #007acc;
+}
+
+.tts-input::placeholder {
+  color: #888;
+}
+
+.tts-status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: rgba(0, 122, 204, 0.1);
+  border: 1px solid rgba(0, 122, 204, 0.3);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: #007acc;
+}
+
+.tts-status-indicator.disabled {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #888;
+}
+
+.tts-setting-item.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.tts-setting-item.disabled label {
+  color: #666;
+  cursor: not-allowed;
+}
+
+.tts-setting-item.disabled .tts-checkbox {
+  border-color: #333;
+  background: #0a0a0a;
+  cursor: not-allowed;
+}
+
+.tts-setting-item.disabled .tts-input {
+  border-color: #333;
+  background: #0a0a0a;
+  color: #666;
+  cursor: not-allowed;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
   .chat-container {

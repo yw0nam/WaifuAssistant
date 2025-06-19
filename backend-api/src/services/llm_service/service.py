@@ -3,6 +3,8 @@ from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
 from langchain_core.messages import AIMessageChunk
+import yaml
+from pathlib import Path
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -178,3 +180,10 @@ class ChatWaifu_LLM(object):
 
             traceback.print_exc()
             raise
+
+
+def load_persona(persona_file: str = "./configs/persona.yaml") -> str:
+    """페르소나 설정 로드"""
+    with open(persona_file, "r", encoding="utf-8") as f:
+        persona_data = yaml.safe_load(f)
+    return yaml.dump(persona_data, allow_unicode=True, sort_keys=False, indent=2)

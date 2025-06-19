@@ -1,9 +1,10 @@
 import requests
 import ormsgpack
-from typing import Literal
+from typing import Literal, List
 from pydantic import BaseModel, Field, conint, model_validator
 from typing_extensions import Annotated
 import base64
+from .text_processor import TTSTextProcessor
 
 
 class ServeReferenceAudio(BaseModel):
@@ -56,6 +57,31 @@ class ChatWaifu_TTS(object):
     def __init__(self, url, api_key=None):
         self.url = url
         self.api_key = api_key
+        self.text_processor = TTSTextProcessor()
+
+    def process_text_for_tts(self, text: str) -> List[str]:
+        """
+        Process text for TTS by filtering unwanted content and splitting into sentences
+
+        Args:
+            text: Raw text from LLM
+
+        Returns:
+            List of cleaned sentences ready for TTS
+        """
+        return self.text_processor.process_for_tts(text)
+
+    def should_process_for_tts(self, text: str) -> bool:
+        """
+        Determine if text should be processed for TTS
+
+        Args:
+            text: Text to evaluate
+
+        Returns:
+            True if text should be converted to speech
+        """
+        return self.text_processor.should_process_for_tts(text)
 
     def request_tts_stream(self, request: ServeTTSRequest) -> bytes | None:
         """

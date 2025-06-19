@@ -7,8 +7,8 @@ from fastapi import WebSocket
 from langchain_openai import ChatOpenAI
 from src.core.app import create_app
 from src.core.logging import setup_logging
-from src.services.llm_service import ChatWaifu_LLM
-from src.services.tts_service import ChatWaifu_TTS
+from src.services.llm_service.service import ChatWaifu_LLM
+from src.services.tts_service.service import ChatWaifu_TTS
 from src.services.persona import load_persona
 from src.websocket.handlers import handle_websocket
 from src.configs import settings

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useAudio } from '../hooks/useAudio';
 import { ChatMessage } from '../types/chat';
-import { ResponseType, AudioResponse, ContentResponse, LLMCompleteResponse, ErrorResponse } from '../types/websocket';
+import { ResponseType, AudioResponse, ContentResponse, LLMCompleteResponse, ErrorResponse, TTSInterruptedResponse, StreamingTTSResponse } from '../types/websocket';
 import './Chat.css';
 
 interface ChatProps {
@@ -15,6 +15,14 @@ const Chat: React.FC<ChatProps> = ({ websocketUrl }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [currentStreamingMessage, setCurrentStreamingMessage] = useState<ChatMessage | null>(null);
   
+  // TTS Settings
+  const [ttsEnabled, setTtsEnabled] = useState(true);
+  const [skipInternalReasoning, setSkipInternalReasoning] = useState(true);
+  const [referenceId, setReferenceId] = useState('');
+  const [reasoningStartTag, setReasoningStartTag] = useState('<think>');
+  const [reasoningEndTag, setReasoningEndTag] = useState('</think>');
+  const [showSettings, setShowSettings] = useState(false);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   
   const { 
@@ -24,7 +32,8 @@ const Chat: React.FC<ChatProps> = ({ websocketUrl }) => {
     disconnect, 
     sendMessage, 
     onMessage, 
-    isConnected 
+    isConnected,
+    interruptTTS
   } = useWebSocket(websocketUrl);
   
   const { 
@@ -34,6 +43,52 @@ const Chat: React.FC<ChatProps> = ({ websocketUrl }) => {
     stopAudio, 
     clearQueue 
   } = useAudio();
+
+  // Load TTS settings from localStorage on mount
+  useEffect(() => {
+    const savedTtsEnabled = localStorage.getItem('tts-enabled');
+    const savedSkipReasoning = localStorage.getItem('tts-skip-reasoning');
+    const savedReferenceId = localStorage.getItem('tts-reference-id');
+    const savedReasoningStartTag = localStorage.getItem('tts-reasoning-start-tag');
+    const savedReasoningEndTag = localStorage.getItem('tts-reasoning-end-tag');
+    
+    if (savedTtsEnabled !== null) {
+      setTtsEnabled(JSON.parse(savedTtsEnabled));
+    }
+    if (savedSkipReasoning !== null) {
+      setSkipInternalReasoning(JSON.parse(savedSkipReasoning));
+    }
+    if (savedReferenceId !== null) {
+      setReferenceId(savedReferenceId);
+    }
+    if (savedReasoningStartTag !== null) {
+      setReasoningStartTag(savedReasoningStartTag);
+    }
+    if (savedReasoningEndTag !== null) {
+      setReasoningEndTag(savedReasoningEndTag);
+    }
+  }, []);
+
+  // Save TTS settings to localStorage when they change
+  useEffect(() => {
+    localStorage.setItem('tts-enabled', JSON.stringify(ttsEnabled));
+  }, [ttsEnabled]);
+
+  useEffect(() => {
+    localStorage.setItem('tts-skip-reasoning', JSON.stringify(skipInternalReasoning));
+  }, [skipInternalReasoning]);
+
+  useEffect(() => {
+    localStorage.setItem('tts-reference-id', referenceId);
+  }, [referenceId]);
+
+  useEffect(() => {
+    localStorage.setItem('tts-reasoning-start-tag', reasoningStartTag);
+  }, [reasoningStartTag]);
+
+  useEffect(() => {
+    localStorage.setItem('tts-reasoning-end-tag', reasoningEndTag);
+  }, [reasoningEndTag]);
 
   // Auto-connect on mount
   useEffect(() => {
@@ -63,6 +118,23 @@ const Chat: React.FC<ChatProps> = ({ websocketUrl }) => {
           content: prev.content + message.text
         } : null);
       }
+    };
+
+    const handleStreamingTTSMessage = (message: StreamingTTSResponse) => {
+      console.log(`🎤 Streaming TTS sentence ${message.sentence_id}:`, message.sentence);
+      
+      // Add visual indicator for streaming TTS (optional)
+      if (currentStreamingMessage) {
+        setCurrentStreamingMessage(prev => prev ? {
+          ...prev,
+          // Mark that TTS is processing for this sentence
+          ttsProcessing: true,
+          lastTTSSentenceId: message.sentence_id
+        } : null);
+      }
+      
+      // The actual TTS audio will come via AudioResponse messages
+      // This message just indicates a sentence is ready for TTS processing
     };
 
     const handleAudioMessage = (message: AudioResponse) => {
@@ -112,6 +184,22 @@ const Chat: React.FC<ChatProps> = ({ websocketUrl }) => {
       setMessages(prev => [...prev, errorMessage]);
     };
 
+    const handleTTSInterruptedMessage = (message: TTSInterruptedResponse) => {
+      console.log('🚫 TTS Interrupted:', message);
+      clearQueue(); // Clear audio queue
+      
+      // Add interrupt notification to chat if desired
+      const interruptMessage: ChatMessage = {
+        id: `interrupt-${Date.now()}`,
+        sender: 'system',
+        content: `🚫 ${message.message}${message.interrupted_count ? ` (${message.interrupted_count} items cleared)` : ''}`,
+        timestamp: new Date(),
+        isComplete: true
+      };
+      
+      setMessages(prev => [...prev, interruptMessage]);
+    };
+
     const unsubscribe = onMessage((message) => {
       switch (message.type) {
         case ResponseType.CONTENT:
@@ -126,13 +214,19 @@ const Chat: React.FC<ChatProps> = ({ websocketUrl }) => {
         case ResponseType.ERROR:
           handleErrorMessage(message as ErrorResponse);
           break;
+        case ResponseType.TTS_INTERRUPTED:
+          handleTTSInterruptedMessage(message as TTSInterruptedResponse);
+          break;
+        case ResponseType.STREAMING_TTS:
+          handleStreamingTTSMessage(message as StreamingTTSResponse);
+          break;
         default:
           console.log('Unhandled message type:', message);
       }
     });
 
     return unsubscribe;
-  }, [onMessage, currentStreamingMessage, playAudio]);
+  }, [onMessage, currentStreamingMessage, playAudio, clearQueue]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -155,14 +249,29 @@ const Chat: React.FC<ChatProps> = ({ websocketUrl }) => {
     
     setMessages(prev => [...prev, userMessage]);
     
-    // Send message
-    sendMessage(inputText.trim());
+    // Send message with TTS settings
+    sendMessage(
+      inputText.trim(), 
+      ttsEnabled, 
+      referenceId || undefined, 
+      skipInternalReasoning,
+      reasoningStartTag,
+      reasoningEndTag
+    );
     setInputText('');
   };
 
   const handleStopAudio = () => {
     stopAudio();
     clearQueue();
+  };
+
+  const handleInterruptTTS = () => {
+    // Stop local audio playback
+    stopAudio();
+    clearQueue();
+    // Send interrupt signal to backend
+    interruptTTS('user_interrupt');
   };
 
   const getConnectionStatusColor = () => {
@@ -253,11 +362,115 @@ const Chat: React.FC<ChatProps> = ({ websocketUrl }) => {
           <div className="audio-info">
             🎵 Playing: {currentText}
           </div>
-          <button className="stop-audio-btn" onClick={handleStopAudio}>
-            ⏹ Stop
-          </button>
+          <div className="audio-controls">
+            <button className="stop-audio-btn" onClick={handleStopAudio}>
+              ⏹ Stop Audio
+            </button>
+            <button className="interrupt-tts-btn" onClick={handleInterruptTTS}>
+              🚫 Interrupt TTS
+            </button>
+          </div>
         </div>
       )}
+
+      {/* TTS Settings Panel */}
+      <div className="tts-settings">
+        <div 
+          className="tts-settings-header"
+          onClick={() => setShowSettings(!showSettings)}
+        >
+          <div className="tts-settings-title">
+            🎤 TTS Settings
+          </div>
+          <button 
+            type="button" 
+            className="tts-settings-toggle"
+            aria-label={showSettings ? "Hide settings" : "Show settings"}
+          >
+            {showSettings ? '▼' : '▶'}
+          </button>
+        </div>
+        
+        {showSettings && (
+          <div className="tts-settings-content">
+            <div className="tts-setting-item">
+              <label>
+                <input
+                  type="checkbox"
+                  checked={ttsEnabled}
+                  onChange={(e) => setTtsEnabled(e.target.checked)}
+                  className="tts-checkbox"
+                />
+                Enable TTS
+              </label>
+              <div className={`tts-status-indicator ${!ttsEnabled ? 'disabled' : ''}`}>
+                {ttsEnabled ? '🔊 ON' : '🔇 OFF'}
+              </div>
+            </div>
+            
+            <div className={`tts-setting-item ${!ttsEnabled ? 'disabled' : ''}`}>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={skipInternalReasoning}
+                  onChange={(e) => setSkipInternalReasoning(e.target.checked)}
+                  className="tts-checkbox"
+                  disabled={!ttsEnabled}
+                />
+                Skip Internal Reasoning
+              </label>
+              <div className="tts-status-indicator">
+                {skipInternalReasoning ? '🧠 Filtered' : '💭 Included'}
+              </div>
+            </div>
+            
+            <div className={`tts-setting-item ${!ttsEnabled ? 'disabled' : ''}`}>
+              <label htmlFor="reference-id">
+                Voice Reference ID:
+              </label>
+              <input
+                id="reference-id"
+                type="text"
+                value={referenceId}
+                onChange={(e) => setReferenceId(e.target.value)}
+                placeholder="Optional voice reference ID"
+                className="tts-input"
+                disabled={!ttsEnabled}
+              />
+            </div>
+            
+            <div className={`tts-setting-item ${!ttsEnabled || !skipInternalReasoning ? 'disabled' : ''}`}>
+              <label htmlFor="reasoning-start-tag">
+                Reasoning Start Tag:
+              </label>
+              <input
+                id="reasoning-start-tag"
+                type="text"
+                value={reasoningStartTag}
+                onChange={(e) => setReasoningStartTag(e.target.value)}
+                placeholder="e.g., <think>"
+                className="tts-input"
+                disabled={!ttsEnabled || !skipInternalReasoning}
+              />
+            </div>
+            
+            <div className={`tts-setting-item ${!ttsEnabled || !skipInternalReasoning ? 'disabled' : ''}`}>
+              <label htmlFor="reasoning-end-tag">
+                Reasoning End Tag:
+              </label>
+              <input
+                id="reasoning-end-tag"
+                type="text"
+                value={reasoningEndTag}
+                onChange={(e) => setReasoningEndTag(e.target.value)}
+                placeholder="e.g., </think>"
+                className="tts-input"
+                disabled={!ttsEnabled || !skipInternalReasoning}
+              />
+            </div>
+          </div>
+        )}
+      </div>
 
       <form className="input-form" onSubmit={handleSubmit}>
         <input

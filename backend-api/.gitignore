@@ -1,3 +1,4 @@
 .huggingface*
 *.pyc
-configs/persona.yaml
+configs/persona*
+tests

@@ -2,7 +2,8 @@
 
 export enum MessageType {
   CHAT = 'chat',
-  PING = 'ping'
+  PING = 'ping',
+  TTS_INTERRUPT = 'tts_interrupt'
 }
 
 export enum ResponseType {
@@ -10,7 +11,9 @@ export enum ResponseType {
   AUDIO = 'audio',
   LLM_COMPLETE = 'llm_complete',
   ERROR = 'error',
-  PONG = 'pong'
+  PONG = 'pong',
+  TTS_INTERRUPTED = 'tts_interrupted',
+  STREAMING_TTS = 'streaming_tts'  // New: For real-time TTS sentences
 }
 
 // Request types
@@ -18,7 +21,10 @@ export interface ChatRequest {
   type: MessageType.CHAT;
   text: string;
   enable_tts?: boolean;
+  skip_internal_reasoning?: boolean;
   reference_id?: string;
+  reasoning_start_tag?: string;
+  reasoning_end_tag?: string;
 }
 
 export interface PingRequest {
@@ -26,7 +32,12 @@ export interface PingRequest {
   timestamp?: number;
 }
 
-export type WebSocketRequest = ChatRequest | PingRequest;
+export interface TTSInterruptRequest {
+  type: MessageType.TTS_INTERRUPT;
+  reason?: string;
+}
+
+export type WebSocketRequest = ChatRequest | PingRequest | TTSInterruptRequest;
 
 // Response types
 export interface ContentResponse {
@@ -63,12 +74,27 @@ export interface PongResponse {
   client_timestamp?: number;
 }
 
+export interface TTSInterruptedResponse {
+  type: ResponseType.TTS_INTERRUPTED;
+  message: string;
+  interrupted_count?: number;
+}
+
+export interface StreamingTTSResponse {
+  type: ResponseType.STREAMING_TTS;
+  sentence: string;
+  sentence_id: number;
+  is_final: boolean;
+}
+
 export type WebSocketResponse = 
   | ContentResponse 
   | AudioResponse 
   | LLMCompleteResponse 
   | ErrorResponse 
-  | PongResponse;
+  | PongResponse
+  | TTSInterruptedResponse
+  | StreamingTTSResponse;
 
 // Connection states
 export enum ConnectionState {

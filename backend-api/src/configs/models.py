@@ -30,11 +30,6 @@ class TTSSettings(BaseModel):
 
     api_key: str = Field(default="")
     url: str = Field(default="http://localhost:8080/v1/tts")
-    reference_id: Optional[str] = Field(default=None)
-    format: str = Field(default="wav")
-    chunk_length: int = Field(default=200, ge=100, le=300)
-    normalize: bool = Field(default=True)
-    temperature: float = Field(default=0.8, ge=0.1, le=1.0)
 
     class Config:
         env_prefix = "TTS_"
