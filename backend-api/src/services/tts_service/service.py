@@ -1,10 +1,13 @@
 import requests
 import ormsgpack
-from typing import Literal, List
+from typing import Literal, Optional
 from pydantic import BaseModel, Field, conint, model_validator
 from typing_extensions import Annotated
 import base64
-from .text_processor import TTSTextProcessor
+from src.utils.text_processor import TTSTextProcessor, ProcessedText
+from src.core.logging import setup_logging
+
+logger = setup_logging("tts_service")
 
 
 class ServeReferenceAudio(BaseModel):
@@ -14,13 +17,10 @@ class ServeReferenceAudio(BaseModel):
     @model_validator(mode="before")
     def decode_audio(cls, values):
         audio = values.get("audio")
-        if (
-            isinstance(audio, str) and len(audio) > 255
-        ):  # Check if audio is a string (Base64)
+        if isinstance(audio, str):
             try:
                 values["audio"] = base64.b64decode(audio)
-            except Exception as e:
-                # If the audio is not a valid base64 string, we will just ignore it and let the server handle it
+            except Exception:
                 pass
         return values
 
@@ -53,104 +53,140 @@ class ServeTTSRequest(BaseModel):
         arbitrary_types_allowed = True
 
 
-class ChatWaifu_TTS(object):
-    def __init__(self, url, api_key=None):
+class ChatWaifu_TTS:
+    """
+    외부 TTS API와 통신하여 텍스트로부터 음성을 생성하는 서비스입니다.
+    텍스트 처리부터 API 요청까지 모든 과정을 캡슐화합니다.
+    """
+
+    def __init__(self, url: str, api_key: Optional[str] = None):
         self.url = url
         self.api_key = api_key
+        # TTSTextProcessor 인스턴스를 내부적으로 소유합니다.
         self.text_processor = TTSTextProcessor()
-
-    def process_text_for_tts(self, text: str) -> List[str]:
-        """
-        Process text for TTS by filtering unwanted content and splitting into sentences
-
-        Args:
-            text: Raw text from LLM
-
-        Returns:
-            List of cleaned sentences ready for TTS
-        """
-        return self.text_processor.process_for_tts(text)
-
-    def should_process_for_tts(self, text: str) -> bool:
-        """
-        Determine if text should be processed for TTS
-
-        Args:
-            text: Text to evaluate
-
-        Returns:
-            True if text should be converted to speech
-        """
-        return self.text_processor.should_process_for_tts(text)
-
-    def request_tts_stream(self, request: ServeTTSRequest) -> bytes | None:
-        """
-        TTS 요청을 보내고 오디오 데이터를 바이트로 반환 (파일 저장 없음)
-
-        Returns:
-            bytes: 성공 시 오디오 바이트 데이터
-            None: 실패 시
-        """
-        headers = {
-            "content-type": "application/msgpack",
-        }
-
-        # API 키가 있는 경우 Authorization 헤더 추가
+        self.session = requests.Session()
+        headers = {"content-type": "application/msgpack"}
         if self.api_key:
             headers["authorization"] = f"Bearer {self.api_key}"
+        self.session.headers.update(headers)
 
+    def _request_tts_stream(self, request_payload: ServeTTSRequest) -> Optional[bytes]:
+        """
+        [내부 메서드] TTS 요청을 보내고 오디오 데이터를 바이트로 반환합니다.
+
+        Args:
+            request_payload: API에 전송할 Pydantic 요청 모델
+
+        Returns:
+            성공 시 오디오 바이트 데이터, 실패 시 None
+        """
         try:
-            # POST 요청 전송
-            response = requests.post(
+            response = self.session.post(
                 self.url,
-                data=ormsgpack.packb(request, option=ormsgpack.OPT_SERIALIZE_PYDANTIC),
-                headers=headers,
+                data=ormsgpack.packb(
+                    request_payload, option=ormsgpack.OPT_SERIALIZE_PYDANTIC
+                ),
                 timeout=30,
             )
             response.raise_for_status()
-
-            if response.status_code == 200:
-                print(f"✅ 음성 데이터 생성 성공 ({len(response.content)} bytes)")
-                return response.content
-            else:
-                print(f"❌ 요청 실패: HTTP {response.status_code}")
-                return None
-
-        except requests.exceptions.ConnectionError:
-            print("❌ 서버에 연결할 수 없습니다.")
-            return None
-        except requests.exceptions.Timeout:
-            print("❌ 요청 시간 초과")
+            logger.info(f"음성 데이터 생성 성공 ({len(response.content)} bytes)")
+            return response.content
+        except requests.exceptions.RequestException as e:
+            logger.error(f"TTS API 요청 실패: {e}")
             return None
         except Exception as e:
-            print(f"❌ 예상치 못한 오류: {e}")
+            logger.error(f"TTS 처리 중 예상치 못한 오류: {e}")
             return None
 
-    def request_tts_base64(self, request: ServeTTSRequest) -> str | None:
+    def generate_speech(
+        self,
+        raw_text: str,
+        reference_id: Optional[str] = None,
+        output_format: Literal["bytes", "base64", "file"] = "bytes",
+        output_filename: Optional[str] = "output.wav",
+    ) -> Optional[bytes | str | bool]:
         """
-        TTS 요청을 보내고 Base64 인코딩된 오디오 데이터 반환
-        WebSocket 전송에 최적화
+        [메인 메서드] 원본 텍스트를 받아 음성을 생성하고 지정된 포맷으로 반환합니다.
+
+        Args:
+            raw_text: LLM으로부터 받은 원본 텍스트
+            reference_id: 사용할 음성 레퍼런스 ID
+            output_format: 반환할 오디오 데이터 형식 ('bytes', 'base64', 'file')
+            output_filename: 'file' 포맷일 경우 저장할 파일명
 
         Returns:
-            str: 성공 시 Base64 인코딩된 오디오 데이터
-            None: 실패 시
+            - "bytes": 오디오 데이터 (bytes)
+            - "base64": Base64 인코딩된 문자열 (str)
+            - "file": 저장 성공 여부 (bool)
+            - 처리할 텍스트가 없거나 실패 시 None
         """
-        audio_bytes = self.request_tts_stream(request)
-        if audio_bytes:
-            return base64.b64encode(audio_bytes).decode("utf-8")
-        return None
+        # 1. TTSTextProcessor를 사용해 텍스트 처리 및 정보 추출
+        processed_data: ProcessedText = self.text_processor.process_text(raw_text)
 
-    # 기존 파일 저장 메서드는 호환성을 위해 유지
-    def request_tts(self, output_filename: str, request: ServeTTSRequest) -> bool:
-        """기존 파일 저장 방식 (호환성을 위해 유지)"""
-        audio_bytes = self.request_tts_stream(request)
-        if audio_bytes:
+        # 2. TTS로 처리할 텍스트가 있는지 확인
+        tts_text = processed_data.filtered_text
+        if not tts_text:
+            logger.info("TTS로 처리할 내용이 없어 스킵합니다.")
+            return None
+
+        # 3. API 요청 페이로드 생성
+        request_payload = ServeTTSRequest(text=tts_text, reference_id=reference_id)
+
+        # 4. API 호출하여 오디오 데이터 획득
+        audio_bytes = self._request_tts_stream(request_payload)
+
+        if not audio_bytes:
+            return None
+
+        # 5. 요청된 포맷에 맞춰 결과 반환
+        if output_format == "base64":
+            return base64.b64encode(audio_bytes).decode("utf-8")
+        elif output_format == "file":
             try:
                 with open(output_filename, "wb") as f:
                     f.write(audio_bytes)
-                print(f"✅ 음성 파일이 성공적으로 생성되었습니다: {output_filename}")
+                logger.info(f"음성 파일이 성공적으로 생성되었습니다: {output_filename}")
                 return True
             except Exception as e:
-                print(f"❌ 파일 저장 오류: {e}")
+                logger.error(f"파일 저장 오류: {e}")
                 return False
-        return False
+        else:  # "bytes"가 기본값
+            return audio_bytes
+
+
+# --- 사용 예제 ---
+if __name__ == "__main__":
+    # TTS 서비스 URL (실제 URL로 변경 필요)
+    TTS_API_URL = "http://localhost:8080/v1/tts"
+
+    # 1. 서비스 인스턴스 생성
+    tts_service = ChatWaifu_TTS(url=TTS_API_URL)
+
+    # 2. LLM에서 받은 것과 유사한 원본 텍스트
+    llm_output_text = "<think>User seems happy. I should respond cheerfully.</think> (delighted) That's wonderful news! I'm so happy for you!"
+
+    # 3. 서비스의 메인 메서드 하나만 호출하여 오디오 데이터 받기
+    print("--- 'bytes' 포맷으로 오디오 생성 시도 ---")
+    audio_data = tts_service.generate_speech(
+        raw_text=llm_output_text,
+        reference_id="ナツメ",
+        output_format="bytes",
+    )
+
+    if audio_data:
+        print(f"성공! 오디오 데이터 수신 (크기: {len(audio_data)} bytes)")
+    else:
+        print("실패.")
+
+    print("\n--- 'file' 포맷으로 오디오 생성 시도 ---")
+    file_audio = tts_service.generate_speech(
+        raw_text=llm_output_text,
+        output_format="file",
+        output_filename="output.wav",
+        reference_id="ナツメ",
+    )
+
+    if file_audio:
+        print(f"성공! 파일로 저장되었습니다: output.wav")
+    else:
+        print("실패.")

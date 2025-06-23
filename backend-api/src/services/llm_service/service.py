@@ -78,7 +78,11 @@ class ChatWaifu_LLM(object):
                     # 메모리 보호: 최대 크기 초과 시 강제 전송
                     if len(content_buffer) > MAX_BUFFER_SIZE:
                         if content_buffer.strip():
-                            yield {"type": "content", "text": content_buffer.strip()}
+                            yield {
+                                "type": "content",
+                                "text": content_buffer.strip(),
+                                "node": node,
+                            }
                             chunk_count += 1
                         content_buffer = ""
                         continue
@@ -100,7 +104,11 @@ class ChatWaifu_LLM(object):
                         should_send = True
 
                     if should_send and content_buffer.strip():
-                        yield {"type": "content", "text": content_buffer.strip()}
+                        yield {
+                            "type": "content",
+                            "text": content_buffer.strip(),
+                            "node": node,
+                        }
                         chunk_count += 1
                         content_buffer = ""
 
@@ -125,6 +133,7 @@ class ChatWaifu_LLM(object):
                                 "type": "tool_call",
                                 "tool_name": tool_name,
                                 "args": args_str,
+                                "node": node,
                             }
                             # 상태 리셋
                             tool_called = False
@@ -132,7 +141,11 @@ class ChatWaifu_LLM(object):
 
             # 마지막 버퍼 처리
             if content_buffer.strip():
-                yield {"type": "content", "text": content_buffer.strip()}
+                yield {
+                    "type": "content",
+                    "text": content_buffer.strip(),
+                    "node": node,
+                }
                 chunk_count += 1
 
             logger.info(f"Message processing completed. Total chunks: {chunk_count}")
@@ -141,7 +154,7 @@ class ChatWaifu_LLM(object):
             logger.error(f"Error in process_message: {e}")
             # 버퍼에 남은 내용이 있으면 먼저 전송
             if content_buffer.strip():
-                yield {"type": "content", "text": content_buffer.strip()}
+                yield {"type": "content", "text": content_buffer.strip(), "node": node}
             yield {"type": "error", "message": "메시지 처리 중 오류가 발생했습니다."}
 
     async def stream(self, message: list, mcp_config: dict):

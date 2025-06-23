@@ -1,296 +1,177 @@
-"""
-Streaming text processor for real-time TTS
-Processes text chunks incrementally and detects complete sentences
-"""
-
 import re
-from typing import List, Optional, Tuple
+from typing import List, Optional
 from src.core.logging import setup_logging
-from .text_processor import TTSTextProcessor
+
+# TTSTextProcessor와 ProcessedText는 외부에서 사용되므로 그대로 둡니다.
+from src.utils.text_processor import TTSTextProcessor, ProcessedText
 
 logger = setup_logging("streaming_processor")
 
 
 class StreamingTTSProcessor:
-    """Processes text chunks in real-time and detects complete sentences for immediate TTS"""
+    """
+    텍스트 청크를 실시간으로 처리하여 TTS에 적합한 완성된 문장을 감지하고 반환합니다.
+    내적 추론 필터링은 스트리밍 방식으로 처리하며, 문장 경계 감지에 중점을 둡니다.
+    """
 
     def __init__(
         self,
-        skip_internal_reasoning: bool = True,
         reasoning_start_tag: str = "<think>",
         reasoning_end_tag: str = "</think>",
     ):
-        self.text_processor = TTSTextProcessor()
-        self.skip_internal_reasoning = skip_internal_reasoning
-        self.accumulated_text = ""
-        self.processed_length = 0  # Track how much we've already processed
+        # 스트리밍 처리에 필요한 상태 변수들
+        self._buffer = ""
+        self._inside_reasoning = False
 
-        # State-based reasoning filter with nesting support
-        self.reasoning_stack = []  # Stack to handle nested reasoning blocks
-        self.reasoning_buffer = ""
-
-        # Dynamic reasoning tag patterns
-        self.reasoning_start_tag = reasoning_start_tag
-        self.reasoning_end_tag = reasoning_end_tag
-
-        # Compile patterns for the specified tags
-        self.reasoning_start_pattern = re.compile(
-            re.escape(reasoning_start_tag), re.IGNORECASE
+        # 내적 추론 태그 패턴
+        # split을 사용하기 위해 시작 태그와 끝 태그를 캡처 그룹으로 묶습니다.
+        self._reasoning_pattern = re.compile(
+            f"({re.escape(reasoning_start_tag)}|{re.escape(reasoning_end_tag)})",
+            re.IGNORECASE,
         )
-        self.reasoning_end_pattern = re.compile(
-            re.escape(reasoning_end_tag), re.IGNORECASE
-        )
+
+        # 문장 경계 감지 패턴 (일본어 및 서양권 언어 모두 지원)
+        # 줄바꿈도 중요한 문장 경계로 취급합니다.
+        self._sentence_boundaries = re.compile(r"(?<=[.!?。！？\n])\s*")
 
         logger.debug(
-            f"Initialized with reasoning tags: start='{reasoning_start_tag}', end='{reasoning_end_tag}'"
+            f"StreamingTTSProcessor 초기화 완료. 추론 태그: '{reasoning_start_tag}', '{reasoning_end_tag}'"
         )
 
-        # Sentence ending patterns (more comprehensive)
-        self.sentence_endings = re.compile(r"[.!?]+(?:\s|$)")
-
-        # Sentence boundary markers for streaming (support Japanese and Western)
-        # Be conservative - only split on clear sentence endings, not pause markers
-        self.sentence_boundaries = re.compile(r"[.!?。！？]+(?:\s|$)|[\n\r]+")
-
-        # NOTE: Removed ellipsis (…) and tilde (~) from boundaries as they are often
-        # used for emphasis or pauses within sentences in Japanese
-
-    @property
-    def inside_reasoning(self) -> bool:
-        """Check if currently inside any reasoning block"""
-        return len(self.reasoning_stack) > 0
-
-    def _filter_reasoning_realtime(self, chunk: str) -> str:
+    def _filter_reasoning_stream(self, chunk: str) -> str:
         """
-        Real-time reasoning filter using state machine
-        Handles cases where reasoning tags span multiple chunks
+        스트리밍 상태를 유지하며 내적 추론 태그를 필터링합니다.
+        re.split을 사용하여 더 안정적으로 처리합니다.
 
         Args:
-            chunk: New text chunk to filter
+            chunk: 새로 들어온 텍스트 청크
 
         Returns:
-            Filtered text chunk (empty if inside reasoning block)
+            내적 추론 부분이 필터링된 텍스트 청크
         """
-        if not self.skip_internal_reasoning:
-            return chunk
+        parts = self._reasoning_pattern.split(chunk)
+        filtered_chunk = ""
 
-        filtered_text = ""
-        i = 0
-        text = chunk
+        for part in parts:
+            if not part:
+                continue
 
-        while i < len(text):
-            if not self.inside_reasoning:
-                # Look for reasoning start tag anywhere from current position
-                match = self.reasoning_start_pattern.search(text, i)
-                if match:
-                    # Add text before the tag to output
-                    filtered_text += text[i : match.start()]
-                    # Found reasoning start tag
-                    self.reasoning_stack.append(self.reasoning_start_tag)
-                    self.reasoning_buffer = ""
-                    i = match.end()
-                    logger.debug(
-                        f"Reasoning start detected at position {match.start()}: {match.group()}"
-                    )
-                else:
-                    # No start tag found, add remaining text to output
-                    filtered_text += text[i:]
-                    break
-            else:
-                # Inside reasoning block, look for end tag anywhere from current position
-                match = self.reasoning_end_pattern.search(text, i)
-                if match:
-                    # Skip text before the end tag (it's inside reasoning block)
-                    # Found reasoning end tag
-                    if self.reasoning_stack:
-                        self.reasoning_stack.pop()
-                    self.reasoning_buffer = ""
-                    i = match.end()
-                    logger.debug(
-                        f"Reasoning end detected at position {match.start()}: {match.group()}"
-                    )
-                    # Continue processing after the end tag (might have more text)
-                else:
-                    # No end tag found, skip remaining text (still inside reasoning)
-                    self.reasoning_buffer += text[i:]
-                    break
+            # part가 시작 태그와 일치하는지 확인 (대소문자 무시)
+            if part.lower() == "<think>":
+                self._inside_reasoning = True
+            # part가 종료 태그와 일치하는지 확인
+            elif part.lower() == "</think>":
+                self._inside_reasoning = False
+            # 태그가 아닌 일반 텍스트 부분
+            elif not self._inside_reasoning:
+                filtered_chunk += part
 
-        return filtered_text
+        return filtered_chunk
 
     def add_chunk(self, chunk: str) -> List[str]:
         """
-        Add a new text chunk and return any complete sentences ready for TTS
+        새로운 텍스트 청크를 추가하고, 감지된 완성된 문장들을 반환합니다.
 
         Args:
-            chunk: New text chunk from LLM stream
+            chunk: LLM 스트림에서 온 새로운 텍스트 청크
 
         Returns:
-            List of complete sentences ready for TTS
+            TTS 처리가 필요한 완성된 문장(들)의 리스트.
+            (이후 이 리스트를 TTSTextProcessor로 처리해야 합니다.)
         """
         if not chunk:
             return []
 
-        # Apply real-time reasoning filter first
-        filtered_chunk = self._filter_reasoning_realtime(chunk)
-
+        # 1. 실시간 내적 추론 필터링
+        filtered_chunk = self._filter_reasoning_stream(chunk)
         if not filtered_chunk:
-            # Chunk was completely filtered out (inside reasoning block)
-            logger.debug(
-                f"Chunk completely filtered: '{chunk}' (inside reasoning: {self.inside_reasoning})"
-            )
             return []
 
-        # Add filtered chunk to accumulated text
-        self.accumulated_text += filtered_chunk
-        logger.debug(
-            f"Added filtered chunk: '{filtered_chunk}' (total length: {len(self.accumulated_text)})"
-        )
+        # 2. 필터링된 청크를 내부 버퍼에 추가
+        self._buffer += filtered_chunk
 
-        # Extract new complete sentences
-        return self._extract_complete_sentences()
+        # 3. 버퍼에서 완성된 문장 추출
+        # 문장 경계 패턴으로 버퍼를 나눔. 마지막 부분은 완성되지 않았을 수 있으므로 보관.
+        sentences = self._sentence_boundaries.split(self._buffer)
 
-    def _extract_complete_sentences(self) -> List[str]:
-        """Extract complete sentences from accumulated text"""
-        # Get the unprocessed portion
-        unprocessed_text = self.accumulated_text[self.processed_length :]
+        # 마지막 요소는 다음 청크를 위해 버퍼에 남겨둠 (문장 경계로 끝나지 않았을 경우)
+        self._buffer = sentences.pop()
 
-        if not unprocessed_text:
-            return []
+        # 비어있지 않은 문장들만 필터링하여 반환
+        complete_sentences = [s.strip() for s in sentences if s and s.strip()]
 
-        logger.debug(
-            f"Processing unprocessed text: '{unprocessed_text}' (length: {len(unprocessed_text)})"
-        )
-        logger.debug(f"Current processed_length: {self.processed_length}")
-
-        # Detect if text is primarily Japanese for conservative sentence splitting
-        japanese_chars = len(
-            [
-                c
-                for c in unprocessed_text
-                if "\u3040" <= c <= "\u309f"
-                or "\u30a0" <= c <= "\u30ff"
-                or "\u4e00" <= c <= "\u9faf"
-            ]
-        )
-        total_chars = len([c for c in unprocessed_text if c.isalnum() or ord(c) > 127])
-        is_japanese = total_chars > 0 and (japanese_chars / total_chars) > 0.3
-
-        # For Japanese text, be more conservative - only split on clear sentence endings
-        if is_japanese:
-            # Only split on definitive Japanese sentence endings
-            conservative_boundaries = re.compile(r"[。！？]+(?:\s|$)")
-        else:
-            # Use normal boundaries for Western text
-            conservative_boundaries = self.sentence_boundaries
-
-        # Find sentence boundaries in the unprocessed text
-        sentences = []
-        last_processed_pos = 0  # Position in unprocessed_text where we last processed
-
-        # Find all sentence boundary matches with their positions
-        for match in conservative_boundaries.finditer(unprocessed_text):
-            start_pos = match.start()
-            end_pos = match.end()
-
-            # Extract the sentence part from last position to this boundary
-            sentence_part = unprocessed_text[last_processed_pos:start_pos].strip()
-
-            if sentence_part and len(sentence_part) > 2:
-                # This is a complete sentence
-                # Add back the sentence ending punctuation
-                full_sentence = sentence_part + match.group().strip()
-
-                logger.debug(f"Found complete sentence: '{full_sentence}'")
-
-                # Clean the sentence for TTS (skip reasoning filter since already applied)
-                cleaned_sentences = self.text_processor.process_for_tts(
-                    full_sentence, skip_internal_reasoning=False  # Already filtered
-                )
-
-                if cleaned_sentences:
-                    sentences.extend(cleaned_sentences)
-                    logger.debug(f"Added cleaned sentences: {cleaned_sentences}")
-
-            # Move position to after this boundary
-            last_processed_pos = end_pos
-
-        # Update the overall processed length to include the processed part of unprocessed_text
-        if last_processed_pos > 0:
-            self.processed_length += last_processed_pos
-            logger.debug(f"Updated processed_length to: {self.processed_length}")
-
-        if sentences:
+        if complete_sentences:
             logger.info(
-                f"Extracted {len(sentences)} complete sentences for TTS: {sentences}"
+                f"{len(complete_sentences)}개의 완성된 문장 추출: {complete_sentences}"
             )
 
-        return sentences
+        return complete_sentences
 
     def finalize(self) -> List[str]:
         """
-        Finalize processing and return any remaining text as sentences
-        Called when LLM streaming is complete
+        스트리밍이 끝났을 때, 버퍼에 남아있는 모든 텍스트를 문장으로 처리하여 반환합니다.
 
         Returns:
-            List of final sentences ready for TTS
+            남아있는 마지막 문장(들)의 리스트.
         """
-        # Get any remaining unprocessed text
-        remaining_text = self.accumulated_text[self.processed_length :].strip()
+        remaining_text = self._buffer.strip()
+        self.reset()  # 상태 초기화
 
         if not remaining_text:
             return []
 
-        logger.info(f"Finalizing remaining text: '{remaining_text[:50]}...'")
-
-        # Process remaining text as complete sentences (skip reasoning filter since already applied)
-        cleaned_sentences = self.text_processor.process_for_tts(
-            remaining_text, skip_internal_reasoning=False  # Already filtered
-        )
-
-        # Mark everything as processed
-        self.processed_length = len(self.accumulated_text)
-
-        return cleaned_sentences
-
-    def should_process_chunk_for_tts(self, chunk: str) -> bool:
-        """
-        Quick check if a chunk might contain TTS-worthy content
-        Used for early filtering before accumulation
-
-        Args:
-            chunk: Text chunk to check
-
-        Returns:
-            True if chunk should be processed
-        """
-        if not chunk or not chunk.strip():
-            return False
-
-        # Always process non-empty chunks - let the internal reasoning filter handle <think> tags
-        # The previous logic was incorrectly filtering out chunks with reasoning tags
-        # which prevented proper sentence extraction
-        return True
+        logger.info(f"마지막 남은 텍스트 처리: '{remaining_text[:50]}...'")
+        return [remaining_text]
 
     def reset(self):
-        """Reset the processor for a new conversation"""
-        self.accumulated_text = ""
-        self.processed_length = 0
-        self.inside_reasoning = False
-        self.reasoning_buffer = ""
-        logger.debug("Streaming processor reset")
+        """프로세서의 상태를 초기화하여 새 대화를 시작할 수 있도록 합니다."""
+        self._buffer = ""
+        self._inside_reasoning = False
+        logger.debug("StreamingTTSProcessor 상태 초기화됨.")
 
-    def get_status(self) -> dict:
-        """Get current processing status for debugging"""
-        return {
-            "accumulated_length": len(self.accumulated_text),
-            "processed_length": self.processed_length,
-            "pending_length": len(self.accumulated_text) - self.processed_length,
-            "inside_reasoning": self.inside_reasoning,
-            "reasoning_buffer_length": len(self.reasoning_buffer),
-            "skip_internal_reasoning": self.skip_internal_reasoning,
-            "accumulated_preview": (
-                self.accumulated_text[:100] + "..."
-                if len(self.accumulated_text) > 100
-                else self.accumulated_text
-            ),
-        }
+
+# --- 사용 예제 ---
+if __name__ == "__main__":
+    # 1. 프로세서 인스턴스 생성
+    streaming_processor = StreamingTTSProcessor()
+    text_processor = TTSTextProcessor()  # 내용 처리용 프로세서는 별도로 관리
+
+    llm_stream = [
+        "Okay, let me think about that. <think>The user is asking about a complex topic.",
+        """{'type': 'tool_call', 'tool_name': 'search_documents', 'args': '{"index": "example_index", "body": {"query": {"query_string": {"query": "example_query"}}}}', '}}}""",
+        " I need to check my knowledge base first.</think> (curious) That's an interesting question!\n",
+        "Give me a moment to process. It might take some time.",
+        " (laughing) Just kidding!",
+    ]
+
+    print("--- 스트리밍 처리 시작 ---")
+    print("입력 스트림:", llm_stream)
+    all_processed_results: List[ProcessedText] = []
+
+    # 2. 스트림 청크별 처리
+    for chunk in llm_stream:
+        # StreamingTTSProcessor는 완성된 '원본' 문장을 반환
+        complete_sentences = streaming_processor.add_chunk(chunk)
+
+        # 완성된 문장이 있을 경우, TTSTextProcessor로 내용을 처리
+        if complete_sentences:
+            print(f"\n[Stream] 완성된 문장 감지: {complete_sentences}")
+            for sentence in complete_sentences:
+                # 각 문장을 내용 처리기에 전달하여 구조화된 데이터 획득
+                processed_data = text_processor.process_text(sentence)
+                all_processed_results.append(processed_data)
+                print(f"  [TTS] 처리 결과: {processed_data}")
+
+    # 3. 스트림 종료 후 남은 데이터 처리
+    final_sentences = streaming_processor.finalize()
+    if final_sentences:
+        print(f"\n[Stream] 마지막 문장 감지: {final_sentences}")
+        for sentence in final_sentences:
+            processed_data = text_processor.process_text(sentence)
+            all_processed_results.append(processed_data)
+            print(f"  [TTS] 처리 결과: {processed_data}")
+
+    print("\n--- 최종 처리 결과 ---")
+    for result in all_processed_results:
+        # 이 result.filtered_text를 TTS 엔진으로 보낼 수 있습니다.
+        print(f"TTS 전송 텍스트: '{result.filtered_text}', 감정: {result.emotion_tag}")

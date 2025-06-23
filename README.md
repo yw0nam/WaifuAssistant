@@ -1,3 +1,13 @@
+# 🚀 2025년 6월 TTS/일본어/실시간 Reasoning 필터 대규모 업데이트
+
+- **실시간 TTS 스트리밍**: LLM 응답을 문장 단위로 실시간 추출하여 TTS로 전송, 자연스러운 대화 흐름 구현
+- **일본어 텍스트 완벽 지원**: 일본어 문장 경계(。！？), 특수문자(♪♫♬♡♥★☆ 등) 보존, 이모지/음표 등도 자연스럽게 처리
+- **Reasoning/내적 추론 태그 실시간 필터**: `<think>...</think>` 등 reasoning 태그가 청크로 분할되어도 정확히 필터링
+- **프론트엔드 TTS 설정 UI**: TTS on/off, reasoning 태그, reference_id 등 실시간 설정 및 localStorage 저장
+- **Reference ID**: 사용자 지정 voice reference_id로 TTS 음성 선택 가능
+- **중요 버그 픽스**: 첫 문장 스킵, 청크 필터링, 일본어 문장 경계, reasoning 태그 분할 등
+- **아키텍처 개선**: 서비스 모듈화, WebSocket 프로토콜 개선, 클라이언트별 AI 응답 상태 추적
+
 # Interactive AI Desktop Assistant
 
 A real-time AI desktop assistant integrating LLM (Large Language Models), STT (Speech-to-Text), and TTS (Text-to-Speech) technologies with a modern React frontend.
