@@ -1,290 +1,213 @@
-# 🚀 2025년 6월 TTS/일본어/실시간 Reasoning 필터 대규모 업데이트
-
-- **실시간 TTS 스트리밍**: LLM 응답을 문장 단위로 실시간 추출하여 TTS로 전송, 자연스러운 대화 흐름 구현
-- **일본어 텍스트 완벽 지원**: 일본어 문장 경계(。！？), 특수문자(♪♫♬♡♥★☆ 등) 보존, 이모지/음표 등도 자연스럽게 처리
-- **Reasoning/내적 추론 태그 실시간 필터**: `<think>...</think>` 등 reasoning 태그가 청크로 분할되어도 정확히 필터링
-- **프론트엔드 TTS 설정 UI**: TTS on/off, reasoning 태그, reference_id 등 실시간 설정 및 localStorage 저장
-- **Reference ID**: 사용자 지정 voice reference_id로 TTS 음성 선택 가능
-- **중요 버그 픽스**: 첫 문장 스킵, 청크 필터링, 일본어 문장 경계, reasoning 태그 분할 등
-- **아키텍처 개선**: 서비스 모듈화, WebSocket 프로토콜 개선, 클라이언트별 AI 응답 상태 추적
-
 # Interactive AI Desktop Assistant
 
-A real-time AI desktop assistant integrating LLM (Large Language Models), STT (Speech-to-Text), and TTS (Text-to-Speech) technologies with a modern React frontend.
+An open-source, real-time AI desktop assistant featuring a low-latency conversational pipeline, configurable personas, and a modern web interface.
 
-## 🎯 Project Overview
+---
 
-This project aims to develop an interactive AI desktop assistant that communicates with users in real-time. Beyond simple text-based chatbots, users can engage in voice conversations with an AI that has configurable **Personas**, providing a lively and engaging experience with future Live2D integration planned.
+## Table of Contents
+
+- [✨ Key Features](#-key-features)
+- [🏗️ System Architecture](#-system-architecture)
+  - [High-Level Overview](#high-level-overview)
+  - [Real-time TTS Pipeline](#real-time-tts-pipeline)
+- [🚀 Getting Started](#-getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Setup & Installation](#setup--installation)
+- [🛠️ Tech Stack](#-tech-stack)
+- [🔄 WebSocket API](#-websocket-api)
+- [🤝 Contributing](#-contributing)
+- [📄 License](#-license)
+
+---
 
 ## ✨ Key Features
 
-- **Real-time Voice Conversation**: Voice recognition and immediate AI-generated audio responses
-- **High-Performance Language Model (LLM)**: Context memory and external tool integration using Langchain and Langgraph
-- **Custom Personas**: Freely configurable AI personality, speech patterns, and background stories via `persona.yaml`
-- **Modular Service Architecture**: Independent service design (STT, LLM, TTS) ensuring scalability
-- **External Tool Integration (MCP)**: Infinite functionality expansion through Multi-Server MCP Client
-- **Modern React Frontend**: TypeScript-based web interface with real-time WebSocket communication
-- **Audio Streaming**: Real-time audio playback with base64-encoded audio streaming
+This project provides a sophisticated foundation for building interactive AI voice agents.
+
+- **Low-Latency Conversational AI:** Engages in natural, real-time voice conversations with minimal delay. LLM responses are streamed, processed into sentences, and converted to speech on-the-fly.
+- **Intelligent Text Processing:**
+  - *Reasoning & Tool Filtering:* Automatically filters out the AI's internal reasoning (`<think>...</think>`) and tool-related outputs (`Observation: ...`) from the final speech, ensuring a natural user experience.
+  - *Emotion Tag Extraction:* Can detect and extract emotion tags like `(laughing)` or `(curious)` for more expressive TTS synthesis.
+- **Multi-language Support:** Optimized sentence boundary detection for both English and Japanese (`.!?` and `。！？`).
+- **Modular and Scalable Architecture:** Clean separation of concerns between services (LLM, TTS, WebSocket) makes the system easy to maintain, test, and extend.
+- **Configurable Personas:** Easily define the AI's personality, background story, and speaking style using a simple `persona.yaml` file.
+- **External Tool Integration:** Powered by LangGraph and a Multi-Server MCP Client, allowing for infinite functional expansion through external tools.
+- **Modern Frontend:** A responsive and user-friendly interface built with React and TypeScript, featuring real-time communication via WebSockets.
+
+---
 
 ## 🏗️ System Architecture
 
-This project follows a client-server model with a **FastAPI backend** and **React TypeScript frontend**. All core logic is processed on the backend API server, while the frontend provides a modern web interface for user interaction.
+### High-Level Overview
 
-### Project Structure
+The project uses a client-server model with a Python FastAPI backend handling all core logic and a React (TypeScript) frontend for user interaction.
 
-```
+```plaintext
 WaifuAssistant/
 ├── backend-api/              # 🐍 Python FastAPI Backend
 │   ├── configs/              # ⚙️ Configuration Files
-│   │   ├── app_config.yaml   #    - Service Configuration (LLM, TTS, etc.)
-│   │   ├── mcp_config.json   #    - MCP Tool Configuration
-│   │   └── persona.yaml      #    - AI Persona Configuration
 │   ├── src/                  # 📦 Python Source Code
-│   │   ├── main.py           #    - FastAPI Entry Point
-│   │   ├── core/             #    - Core Application Logic
-│   │   ├── services/         #    - Business Logic Services
-│   │   │   ├── llm_service/  #      - LLM Service Implementation
-│   │   │   └── tts_service/  #      - TTS Service Implementation
-│   │   ├── websocket/        #    - WebSocket Handlers
-│   │   └── configs/          #    - Configuration Management
-│   ├── pyproject.toml        #    - Project Dependencies (UV)
-│   └── uv.lock              #    - Dependency Lock File
+│   │   ├── main.py           #    - FastAPI App & WebSocket Entry Point
+│   │   ├── services/         #    - Business Logic (LLM, TTS)
+│   │   └── websocket/        #    - WebSocket Handlers & TTS Worker
+│   └── pyproject.toml        #    - Project Dependencies
 └── frontend-app/             # ⚛️ React TypeScript Frontend
-    ├── public/               # 🌐 Static Assets
     ├── src/                  # 📱 React Source Code
-    │   ├── components/       #    - React Components
-    │   │   └── Chat.tsx      #      - Main Chat Interface
-    │   ├── hooks/            #    - Custom React Hooks
-    │   │   ├── useWebSocket.ts #    - WebSocket Hook
-    │   │   └── useAudio.ts   #      - Audio Playback Hook
-    │   ├── services/         #    - Frontend Services
-    │   └── types/            #    - TypeScript Type Definitions
-    ├── package.json          #    - Node.js Dependencies
-    └── build/                #    - Production Build Output
+    └── package.json          #    - Node.js Dependencies
 ```
 
-### Data Flow
+### Real-time TTS Pipeline
 
-1. **Input**: 
-   - Frontend React app captures user text input
-   - (Future) STT integration for voice input
+To achieve low-latency TTS, we use a decoupled, queue-based pipeline that processes text as it's generated by the LLM.
 
-2. **Processing**:
-   - WebSocket connection between frontend and backend
-   - Backend WebSocket handlers receive messages
-   - LLM service generates responses using persona and MCP tools
-   - Real-time streaming response delivery
+```plaintext
+[LLM Stream]
+      |
+      v
+[1. WebSocket Handler]
+   - Receives raw text chunks from the LLM.
+   - Filters chunks based on their 'node' type (e.g., only allows 'agent' responses for TTS).
+   |
+   v
+[2. StreamingTTSProcessor]
+   - Accumulates filtered chunks.
+   - Detects sentence boundaries (.!?,。！？, \n) in real-time.
+   - Emits complete, raw sentences.
+   |
+   v
+[3. TTS Queue]
+   - A per-client asyncio.Queue that buffers ready-to-speak sentences.
+   |
+   v
+[4. TTS Worker]
+   - A dedicated background task that pulls sentences from the queue.
+   - Calls the TTSService to generate audio for each sentence.
+   - Sends the resulting audio back to the client via WebSocket.
+   |
+   v
+[5. ChatWaifu_TTS Service]
+   - Encapsulates final text processing (emotion tags, etc.) and the external TTS API call.
+```
 
-3. **Output**:
-   - TTS service converts text to speech
-   - Base64-encoded audio data streamed via WebSocket
-   - Frontend plays audio in real-time
-   - (Future) Live2D character animation integration
+This architecture ensures that the LLM stream, sentence processing, and TTS generation run concurrently without blocking each other.
 
-## 🚀 Installation and Setup
+---
+
+## 🚀 Getting Started
 
 ### Prerequisites
 
-- **Backend**: Python 3.12+, UV package manager
-- **Frontend**: Node.js 16+, npm or yarn
-- **API Keys**: Required API keys (e.g., OpenAI)
+- **Backend:** Python 3.12+, [UV](https://github.com/astral-sh/uv) package manager
+- **Frontend:** Node.js 18+, npm or yarn
+- **API Keys:** Required API keys for services like OpenAI.
 
-### Environment Setup
+### Setup & Installation
 
-1. **Environment Variables**:
-   ```bash
-   export OPENAI_API_KEY="your-api-key-here"
-   ```
+**Clone the Repository:**
 
-2. **Configuration Files**:
-   - [`backend-api/configs/app_config.yaml`](backend-api/configs/app_config.yaml): LLM, TTS service settings
-   - [`backend-api/configs/persona.yaml`](backend-api/configs/persona.yaml): AI persona definition
-   - [`backend-api/configs/mcp_config.json`](backend-api/configs/mcp_config.json): External tool settings
+```bash
+git clone https://your-repository-url/WaifuAssistant.git
+cd WaifuAssistant
+```
 
-### Running the Application
+**Configure Environment:**
 
-#### Backend Setup
+Export your API keys as environment variables.
 
-1. **Navigate to backend directory**:
-   ```bash
-   cd backend-api
-   ```
+```bash
+export OPENAI_API_KEY="your-api-key-here"
+```
 
-2. **Install dependencies**:
-   ```bash
-   uv sync
-   ```
+Edit the configuration files in `backend-api/configs/` as needed (`persona.yaml`, `mcp_config.json`, etc.).
 
-3. **Start the backend server**:
-   ```bash
-   uv run uvicorn src.main:app --reload
-   ```
+**Run the Backend:**
 
-4. **Backend endpoints**:
-   - HTTP API: `http://localhost:8000`
-   - WebSocket: `ws://localhost:8000/ws/{client_id}`
-   - API Documentation: `http://localhost:8000/docs`
+```bash
+cd backend-api
+uv sync
+uv run uvicorn src.main:app --reload
+```
 
-#### Frontend Setup
+- API Server: [http://localhost:8000](http://localhost:8000)
+- API Docs: [http://localhost:8000/docs](http://localhost:8000/docs)
+- WebSocket: `ws://localhost:8000/ws/{client_id}`
 
-1. **Navigate to frontend directory**:
-   ```bash
-   cd frontend-app
-   ```
+**Run the Frontend:**
 
-2. **Install dependencies**:
-   ```bash
-   npm install
-   ```
+```bash
+cd frontend-app
+npm install
+npm start
+```
 
-3. **Start the development server**:
-   ```bash
-   npm start
-   ```
+Access the application at [http://localhost:3000](http://localhost:3000).
 
-4. **Access the application**:
-   - Frontend: `http://localhost:3000`
-
-#### Production Build
-
-1. **Build frontend for production**:
-   ```bash
-   cd frontend-app
-   npm run build
-   ```
-
-2. **Serve the built frontend** (the backend can serve static files):
-   - Built files are in `frontend-app/build/`
-
-## 📁 Key Files Description
-
-### Backend Files
-- [`backend-api/src/main.py`](backend-api/src/main.py): FastAPI application and WebSocket handlers
-- [`backend-api/src/core/app.py`](backend-api/src/core/app.py): Core application setup and configuration
-- [`backend-api/src/configs/`](backend-api/src/configs/): Configuration management with Pydantic models
-- [`backend-api/src/services/llm_service/`](backend-api/src/services/llm_service/): LLM service logic with Langchain/Langgraph
-- [`backend-api/src/services/tts_service/`](backend-api/src/services/tts_service/): TTS service implementation
-- [`backend-api/src/websocket/`](backend-api/src/websocket/): WebSocket handlers and models
-
-### Frontend Files
-- [`frontend-app/src/components/Chat.tsx`](frontend-app/src/components/Chat.tsx): Main chat interface component
-- [`frontend-app/src/hooks/useWebSocket.ts`](frontend-app/src/hooks/useWebSocket.ts): WebSocket connection management
-- [`frontend-app/src/hooks/useAudio.ts`](frontend-app/src/hooks/useAudio.ts): Audio playback and streaming
-- [`frontend-app/src/types/`](frontend-app/src/types/): TypeScript type definitions
-- [`frontend-app/src/services/`](frontend-app/src/services/): Frontend service utilities
-
-## 🔧 Development Status
-
-### ✅ Completed Features
-- **WebSocket Communication**: Real-time bidirectional communication
-- **LLM Service Integration**: Langchain/Langgraph with OpenAI models
-- **TTS Service Integration**: Text-to-speech with audio streaming
-- **Persona System**: Configurable AI personality and behavior
-- **MCP Tool Integration**: External tool connectivity
-- **React Frontend**: Modern TypeScript-based web interface
-- **Audio Streaming**: Real-time audio playback with queue management
-- **Configuration Management**: YAML/JSON-based configuration system
-
-### 🚧 In Development
-- **STT Service**: Speech-to-text integration (planned)
-- **Live2D Integration**: Character animation system (planned)
-- **Enhanced UI**: Improved frontend design and UX
-- **Voice Input**: Browser-based speech recognition
-
-### 📋 Planned Features
-- **Desktop Application**: Electron wrapper for desktop deployment
-- **Plugin System**: Extensible plugin architecture
-- **Multi-language Support**: Internationalization (i18n)
-- **Voice Cloning**: Custom voice generation
-- **Memory System**: Long-term conversation memory
+---
 
 ## 🛠️ Tech Stack
 
-### Backend
-- **Framework**: FastAPI (Python 3.12+)
-- **Package Manager**: UV
-- **LLM Integration**: Langchain, Langgraph, Langchain-OpenAI
-- **MCP Integration**: Langchain-MCP-Adapters
-- **Audio Processing**: Librosa
-- **WebSocket**: FastAPI WebSockets
-- **Configuration**: Pydantic, YAML/JSON
+**Backend:**
+- Framework: FastAPI
+- LLM Orchestration: LangChain, LangGraph
+- Async: asyncio
+- Package Management: UV
 
-### Frontend
-- **Framework**: React 19+ with TypeScript
-- **Build Tool**: Create React App
-- **State Management**: React Hooks
-- **Real-time Communication**: WebSocket API
-- **Audio Handling**: Web Audio API
-- **Styling**: CSS Modules
+**Frontend:**
+- Framework: React 19+ (with TypeScript)
+- Build Tool: Create React App
+- State Management: React Hooks
+- API Communication: WebSocket API
 
-### Development Tools
-- **Backend Testing**: Python unittest framework
-- **Frontend Testing**: Jest, React Testing Library
-- **Type Checking**: TypeScript, Pydantic
-- **Code Quality**: ESLint (frontend)
+**DevOps & Tooling:**
+- Testing: unittest (Python), Jest & React Testing Library (Frontend)
+- Code Quality: ESLint, Pydantic
 
-## 🔄 API Reference
+---
 
-### WebSocket Events
+## 🔄 WebSocket API
 
-#### Client → Server
-```typescript
-// Send user message
-{
-  "type": "message",
-  "content": "Hello, AI assistant!"
-}
-```
+Communication is handled via a JSON-based WebSocket protocol.
 
-#### Server → Client
-```typescript
-// Streaming LLM response
-{
-  "type": "content",
-  "content": "Hello! How can I help you today?",
-  "is_complete": false
-}
+### Client → Server
 
-// Audio response
-{
-  "type": "audio",
-  "audio_data": "base64-encoded-audio",
-  "text": "Hello! How can I help you today?"
-}
+| Type          | Payload                                         | Description                                 |
+|---------------|-------------------------------------------------|---------------------------------------------|
+| `chat`        | `{ "text": "Hello!", "enable_tts": true }`      | Sends a new user message.                   |
+| `tts_interrupt` | `{ "reason": "User clicked stop" }`           | Interrupts and clears the current TTS queue.|
+| `ping`        | `{ "timestamp": 1678886400 }`                   | Checks connection latency.                  |
 
-// Completion notification
-{
-  "type": "llm_complete"
-}
+### Server → Client
 
-// Error message
-{
-  "type": "error",
-  "error": "Error description"
-}
-```
+| Type          | Payload                                         | Description                                 |
+|---------------|-------------------------------------------------|---------------------------------------------|
+| `content`     | `{ "text": "Hi!", "chunk_id": 0, "node": "agent" }` | A chunk of the streaming LLM response.      |
+| `audio`       | `{ "data": "base64...", "text": "Hi!" }`        | A chunk of base64-encoded audio data for playback. |
+| `llm_complete`| `{ "text": "Full response text", ... }`         | Signals that the full LLM response has been generated. |
+| `error`       | `{ "message": "An error occurred." }`           | Reports an error to the client.             |
+
+---
 
 ## 🤝 Contributing
 
-We welcome contributions to this project! Please feel free to submit issues or pull requests.
+Contributions are welcome! Please feel free to submit a pull request or open an issue.
 
-### Development Guidelines
-1. **Backend**: Follow Python PEP 8 standards
-2. **Frontend**: Use TypeScript and follow React best practices
-3. **Testing**: Write tests for new features
-4. **Documentation**: Update README and code comments
+1. Fork the repository.
+2. Create your feature branch:
+   ```bash
+   git checkout -b feature/AmazingFeature
+   ```
+3. Commit your changes:
+   ```bash
+   git commit -m 'feat: Add some AmazingFeature'
+   ```
+4. Push to the branch:
+   ```bash
+   git push origin feature/AmazingFeature
+   ```
+5. Open a Pull Request.
 
-### Getting Started with Development
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
+---
 
 ## 📄 License
 
-This project is distributed under the MIT License.
-
-## 📞 Support
-
-For questions or support, please open an issue on the GitHub repository.
+This project is distributed under the MIT License. See [LICENSE](LICENSE) for more information.
