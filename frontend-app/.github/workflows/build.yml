@@ -1,0 +1,178 @@
+name: Release
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**.md'
+      - '**.spec.js'
+      - '.idea'
+      - '.gitignore'
+      - '.github/**'
+      - '!.github/workflows/release.yml'
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: 'bash'
+
+env:
+  NODE_NO_WARNINGS: 1
+  npm_config_audit: false
+  npm_config_fund: false
+
+jobs:
+  draft:
+    runs-on: ubuntu-latest
+    outputs:
+      release-note: ${{ steps.release-note.outputs.release-note }}
+      version: ${{ steps.version.outputs.build-version }}
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Get last git tag
+        id: tag
+        run: echo "last-tag=$(git describe --tags --abbrev=0 || git rev-list --max-parents=0 ${{github.ref}})" >> $GITHUB_OUTPUT
+
+      - name: Generate release notes
+        id: release-note
+        run: |
+          RELEASE_NOTES=$(git log $(git describe --tags --abbrev=0)..HEAD --oneline)
+          RELEASE_NOTES="${RELEASE_NOTES//'%'/'%25'}"
+          RELEASE_NOTES="${RELEASE_NOTES//$'\n'/'%0A'}"
+          RELEASE_NOTES="${RELEASE_NOTES//$'\r'/'%0D'}"
+          echo "release-note=$RELEASE_NOTES" >> $GITHUB_OUTPUT
+
+      - name: Get version from current date
+        id: version
+        run: |
+          VERSION=$(node -e "console.log(require('./package.json').version)")
+          echo "build-version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Waiting on All checks
+        uses: lewagon/wait-on-check-action@v0.2
+        with:
+          ref: ${{ github.ref }}
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          running-workflow-name: 'draft'
+
+      - name: Delete outdated drafts
+        uses: hugo19941994/delete-draft-releases@v1.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Release Draft
+        uses: softprops/action-gh-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          prerelease: true
+          draft: true
+          tag_name: v${{ steps.version.outputs.build-version }}
+          name: v${{ steps.version.outputs.build-version }}
+          body: "Release v${{ steps.version.outputs.build-version }}"
+
+  upload_artifacts:
+    needs: [draft]
+    if: ${{ !contains(github.event.head_commit.message, '[skip]') }}
+    
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      # The easiest way to transfer release notes to a compiled application is create `release-notes.md` in the build resources.
+      # See https://github.com/electron-userland/electron-builder/issues/1511#issuecomment-310160119
+      - name: Create build resources directory
+        run: mkdir -p resources
+
+      - name: Prepare release notes
+        env:
+          RELEASE_NOTE: ${{ needs.draft.outputs.release-note }}
+        run: echo "$RELEASE_NOTE" >> ./resources/release-notes.md
+
+      # If building a release for macos, need to do notarization.
+      # - name: Prepare for app notarization
+      #   if: startsWith(matrix.os, 'macos')
+      #   # Import Apple API key for app notarization on macOS
+      #   run: |
+      #     mkdir -p ~/private_keys/
+      #     echo '${{ secrets.apple_api_key }}' > ~/private_keys/AuthKey_${{ secrets.api_key_id }}.p8
+
+      # If releasing Linux app to Snapcraft, install and sign in.
+      # - name: Install Snapcraft
+      #   uses: samuelmeuli/action-snapcraft@v1
+      #   # Only install Snapcraft on Ubuntu
+      #   if: startsWith(matrix.os, 'ubuntu')
+      #   with:
+      #     # Log in to Snap Store
+      #     snapcraft_token: ${{ secrets.snapcraft_token }}
+
+      # Compile app and upload artifacts
+      - name: Compile & release Electron app
+        uses: samuelmeuli/action-electron-builder@v1
+        env:
+          VITE_APP_VERSION: ${{ needs.draft.outputs.version }}
+        with:
+          build_script_name: build
+          args: --config electron-builder.yml
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          release: true
+          max_attempts: 3
+
+  build_web:
+    needs: [draft]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build web target
+        run: npm run build:web
+
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          branch: build
+          folder: dist/web
+          clean: true
+          single-commit: true
+          token: ${{ secrets.GITHUB_TOKEN }}

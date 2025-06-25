@@ -1,0 +1,39 @@
+{
+  "name": "Mao",
+  "description": "Cute assistant character",
+  "model": "/live2d-models/mao_pro_jp/runtime/mao_pro.model3.json",
+  "scale": 0.15,
+  "x": 0,
+  "y": 0,
+  "expressions": [
+    "exp_01",
+    "exp_02", 
+    "exp_03",
+    "exp_04",
+    "exp_05",
+    "exp_06",
+    "exp_07",
+    "exp_08"
+  ],
+  "motions": {
+    "idle": [
+      {
+        "file": "/live2d-models/mao_pro_jp/runtime/motions/mtn_01.motion3.json"
+      },
+      {
+        "file": "/live2d-models/mao_pro_jp/runtime/motions/mtn_04.motion3.json"
+      }
+    ],
+    "special": [
+      {
+        "file": "/live2d-models/mao_pro_jp/runtime/motions/special_01.motion3.json"
+      },
+      {
+        "file": "/live2d-models/mao_pro_jp/runtime/motions/special_02.motion3.json"
+      },
+      {
+        "file": "/live2d-models/mao_pro_jp/runtime/motions/special_03.motion3.json"
+      }
+    ]
+  }
+}

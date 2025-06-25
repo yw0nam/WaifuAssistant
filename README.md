@@ -32,7 +32,7 @@ This project provides a sophisticated foundation for building interactive AI voi
 - **Modular and Scalable Architecture:** Clean separation of concerns between services (LLM, TTS, WebSocket) makes the system easy to maintain, test, and extend.
 - **Configurable Personas:** Easily define the AI's personality, background story, and speaking style using a simple `persona.yaml` file.
 - **External Tool Integration:** Powered by LangGraph and a Multi-Server MCP Client, allowing for infinite functional expansion through external tools.
-- **Modern Frontend:** A responsive and user-friendly interface built with React and TypeScript, featuring real-time communication via WebSockets.
+- **Modern Desktop Frontend:** A professional Electron-based desktop application featuring Live2D character animation, real-time communication via WebSockets, and an intuitive chat interface.
 
 ---
 
@@ -51,8 +51,9 @@ WaifuAssistant/
 │   │   ├── services/         #    - Business Logic (LLM, TTS)
 │   │   └── websocket/        #    - WebSocket Handlers & TTS Worker
 │   └── pyproject.toml        #    - Project Dependencies
-└── frontend-app/             # ⚛️ React TypeScript Frontend
-    ├── src/                  # 📱 React Source Code
+└── frontend-app/             # 🖥️ Electron Desktop Application
+    ├── src/                  # 📱 React + TypeScript Source Code
+    ├── resources/            # 🎨 Live2D Models & Assets
     └── package.json          #    - Node.js Dependencies
 ```
 
@@ -137,10 +138,10 @@ uv run uvicorn src.main:app --reload
 ```bash
 cd frontend-app
 npm install
-npm start
+npm run dev
 ```
 
-Access the application at [http://localhost:3000](http://localhost:3000).
+The desktop application will launch automatically.
 
 ---
 
@@ -153,10 +154,12 @@ Access the application at [http://localhost:3000](http://localhost:3000).
 - Package Management: UV
 
 **Frontend:**
-- Framework: React 19+ (with TypeScript)
-- Build Tool: Create React App
-- State Management: React Hooks
-- API Communication: WebSocket API
+- Framework: React 18+ (with TypeScript)
+- Desktop App: Electron 31+
+- UI Library: Chakra UI
+- Live2D: PIXI.js + pixi-live2d-display
+- State Management: Zustand
+- Build Tool: Electron Vite
 
 **DevOps & Tooling:**
 - Testing: unittest (Python), Jest & React Testing Library (Frontend)
