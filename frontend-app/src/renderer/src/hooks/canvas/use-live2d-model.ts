@@ -19,6 +19,7 @@ import { audioTaskQueue } from "@/utils/task-queue";
 import { AiStateEnum, useAiState } from "@/context/ai-state-context";
 import { toaster } from "@/components/ui/toaster";
 import { useForceIgnoreMouse } from "../utils/use-force-ignore-mouse";
+import { debugLive2D } from "@/utils/live2d-debug";
 
 interface UseLive2DModelProps {
   isPet: boolean; // Whether the model is in pet mode
@@ -34,6 +35,7 @@ export const useLive2DModel = ({
   const modelRef = useRef<Live2DModel | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const kScaleRef = useRef<string | number | undefined>(undefined);
+  const lastLoadedUrlRef = useRef<string | null>(null);
   const { setCurrentModel } = useModelContext();
   const { setIsLoading } = useLive2DConfig();
   const loadingRef = useRef(false);
@@ -57,63 +59,83 @@ export const useLive2DModel = ({
         modelRef.current = null;
       }
     }
+    lastLoadedUrlRef.current = null; // Reset the last loaded URL
     setIsModelReady(false);
   }, [setCurrentModel]);
 
-  // Cleanup function for PIXI application
-  const cleanupApp = useCallback(() => {
-    if (appRef.current) {
-      if (modelRef.current) {
-        cleanupModel();
-      }
-      appRef.current.stage.removeChildren();
-      PIXI.utils.clearTextureCache();
-      appRef.current.renderer.clear();
-      appRef.current.destroy(true, {
-        children: true,
-        texture: true,
-        baseTexture: true,
-      });
-      PIXI.utils.destroyTextureCache();
-      appRef.current = null;
-    }
-  }, [cleanupModel]);
-
   // Initialize PIXI application with canvas (only once)
   useEffect(() => {
-    if (!appRef.current && canvasRef.current) {
-      const app = new PIXI.Application({
-        view: canvasRef.current, // cavas element to render on
-        autoStart: true,
-        width: window.innerWidth,
-        height: window.innerHeight,
-        backgroundAlpha: 0, // transparent background
-        antialias: true, // antialiasing
-        clearBeforeRender: true, // clear before render
-        preserveDrawingBuffer: false, // don't preserve drawing buffer
-        powerPreference: "high-performance", // high performance, use GPU if available
-        resolution: window.devicePixelRatio || 1,
-        autoDensity: true, // auto adjust resolution to fit the screen
-      });
+    let app: PIXI.Application | null = null;
+    
+    const initializeApp = () => {
+      if (!canvasRef.current || appRef.current) {
+        debugLive2D.log("Skipping PIXI app initialization", {
+          hasCanvas: !!canvasRef.current,
+          hasExistingApp: !!appRef.current
+        });
+        return;
+      }
+      
+      try {
+        debugLive2D.log("Initializing PIXI Application");
+        app = new PIXI.Application({
+          view: canvasRef.current, // canvas element to render on
+          autoStart: true,
+          width: window.innerWidth,
+          height: window.innerHeight,
+          backgroundAlpha: 0, // transparent background
+          antialias: true, // antialiasing
+          clearBeforeRender: true, // clear before render
+          preserveDrawingBuffer: false, // don't preserve drawing buffer
+          powerPreference: "high-performance", // high performance, use GPU if available
+          resolution: window.devicePixelRatio || 1,
+          autoDensity: true, // auto adjust resolution to fit the screen
+        });
 
-      // Render on every frame
-      app.ticker.add(() => {
-        if (app.renderer) {
-          app.renderer.render(app.stage);
-        }
-      });
+        // Render on every frame
+        app.ticker.add(() => {
+          if (app?.renderer && appRef.current) {
+            app.renderer.render(app.stage);
+          }
+        });
 
-      appRef.current = app;
-    }
+        appRef.current = app;
+        debugLive2D.log("PIXI Application initialized successfully");
+      } catch (error) {
+        debugLive2D.error("Failed to initialize PIXI Application", error);
+      }
+    };
+
+    // Initialize with a small delay to ensure canvas is ready
+    const timeoutId = setTimeout(initializeApp, 10);
 
     return () => {
-      cleanupApp();
+      clearTimeout(timeoutId);
+      // Only cleanup if this is the final unmount
+      if (app && appRef.current) {
+        try {
+          debugLive2D.log("Destroying PIXI Application");
+          app.destroy(true, {
+            children: true,
+            texture: true,
+            baseTexture: true,
+          });
+          PIXI.utils.destroyTextureCache();
+          debugLive2D.log("PIXI Application destroyed");
+        } catch (error) {
+          debugLive2D.error("Error destroying PIXI Application", error);
+        }
+      }
+      appRef.current = null;
     };
-  }, [cleanupApp]);
+  }, []); // Empty dependency array - only run once
 
   const setupModel = useCallback(
     async (model: Live2DModel) => {
-      if (!appRef.current || !modelInfo) return;
+      if (!appRef.current) {
+        debugLive2D.warn("No PIXI app available for model setup");
+        return;
+      }
 
       if (modelRef.current) {
         modelRef.current.removeAllListeners();
@@ -132,9 +154,14 @@ export const useLive2DModel = ({
 
       model.interactive = true;
       model.cursor = "pointer";
+      
+      // Set the anchor point to center for proper centering
+      model.anchor.set(0.5, 0.5);
+      
       setIsModelReady(true);
+      debugLive2D.log("Model setup completed successfully");
     },
-    [setCurrentModel],
+    [setCurrentModel], // Only depend on setCurrentModel
   );
 
   const setupModelSizeAndPosition = useCallback(() => {
@@ -149,20 +176,48 @@ export const useLive2DModel = ({
       };
 
     resetModelPosition(modelRef.current, width, height, modelInfo?.initialXshift, modelInfo?.initialYshift);
-  }, [modelInfo?.initialXshift, modelInfo?.initialYshift]);
+  }, [isPet, modelInfo?.initialXshift, modelInfo?.initialYshift]);
 
   // Load Live2D model with configuration
   const loadModel = useCallback(async () => {
-    if (!modelInfo?.url || !appRef.current) return;
+    if (!modelInfo?.url || !appRef.current) {
+      debugLive2D.log("Cannot load model: missing URL or PIXI app", { 
+        hasUrl: !!modelInfo?.url, 
+        hasApp: !!appRef.current 
+      });
+      return;
+    }
 
-    if (loadingRef.current) return; // Prevent multiple simultaneous loads
+    if (loadingRef.current) {
+      debugLive2D.log("Model loading already in progress, skipping...");
+      return; // Prevent multiple simultaneous loads
+    }
 
-    console.log("Loading model:", modelInfo.url);
+    debugLive2D.log("Starting model load", modelInfo.url);
+
+    // Check if model URL is accessible
+    const urlExists = await debugLive2D.checkModelUrl(modelInfo.url);
+    if (!urlExists) {
+      debugLive2D.error("Model URL is not accessible", modelInfo.url);
+      return;
+    }
 
     try {
       loadingRef.current = true;
       setIsLoading(true);
       setAiState(AiStateEnum.LOADING);
+
+      // Clean up existing model first
+      if (modelRef.current) {
+        debugLive2D.log("Cleaning up existing model");
+        cleanupModel();
+      }
+
+      debugLive2D.log("Creating Live2D model from URL", {
+        url: modelInfo.url,
+        idleMotionGroup: modelInfo.idleMotionGroupName,
+        pointerInteractive: modelInfo.pointerInteractive
+      });
 
       // Initialize Live2D model with settings
       const model = await Live2DModel.from(modelInfo.url, {
@@ -174,9 +229,18 @@ export const useLive2DModel = ({
         idleMotionGroup: modelInfo.idleMotionGroupName,
       });
 
-      await setupModel(model);
+      debugLive2D.log("Live2D model created successfully");
+
+      // Only setup if the app still exists (component not unmounted)
+      if (appRef.current) {
+        await setupModel(model);
+        debugLive2D.log("Model loaded and setup successfully");
+      } else {
+        debugLive2D.warn("App was destroyed during model loading, cleaning up model");
+        model.destroy();
+      }
     } catch (error) {
-      console.error("Failed to load Live2D model:", error);
+      debugLive2D.error("Failed to load Live2D model", error);
       toaster.create({
         title: `Failed to load Live2D model: ${error}`,
         type: "error",
@@ -190,8 +254,11 @@ export const useLive2DModel = ({
   }, [
     modelInfo?.url,
     modelInfo?.pointerInteractive,
+    modelInfo?.idleMotionGroupName,
     setIsLoading,
+    setAiState,
     setupModel,
+    cleanupModel,
   ]);
 
   const setupModelInteractions = useCallback(
@@ -325,13 +392,53 @@ export const useLive2DModel = ({
 
   // Load model when URL changes and cleanup on unmount
   useEffect(() => {
-    if (modelInfo?.url) {
-      loadModel();
+    if (!modelInfo?.url) return;
+    
+    // Skip if we've already loaded this URL and model exists
+    if (modelInfo.url === lastLoadedUrlRef.current && modelRef.current) {
+      debugLive2D.log("Model already loaded for this URL, skipping", modelInfo.url);
+      return;
     }
+    
+    debugLive2D.log("Model URL effect triggered", modelInfo.url);
+    
+    // Avoid loading if already in progress
+    if (loadingRef.current) {
+      debugLive2D.log("Model already loading, skipping...");
+      return;
+    }
+    
+    // Add a small delay to ensure PIXI app is ready
+    const timeoutId = setTimeout(() => {
+      if (appRef.current && !loadingRef.current) {
+        debugLive2D.log("PIXI app ready, loading model");
+        lastLoadedUrlRef.current = modelInfo.url;
+        loadModel();
+      } else if (!appRef.current) {
+        debugLive2D.warn("PIXI app not ready yet, retrying...");
+        // Retry after another delay if app is not ready
+        setTimeout(() => {
+          if (appRef.current && !loadingRef.current) {
+            debugLive2D.log("PIXI app ready on retry, loading model");
+            lastLoadedUrlRef.current = modelInfo.url;
+            loadModel();
+          } else {
+            debugLive2D.error("PIXI app still not ready after retry");
+          }
+        }, 100);
+      }
+    }, 50);
+    
+    return () => clearTimeout(timeoutId);
+  }, [modelInfo?.url]); // Only depend on URL
+
+  // Separate effect for cleanup on unmount
+  useEffect(() => {
     return () => {
+      debugLive2D.log("Component unmounting, cleaning up model");
       cleanupModel();
     };
-  }, [modelInfo?.url, modelInfo?.pointerInteractive, loadModel, cleanupModel]);
+  }, [cleanupModel]);
 
   useEffect(() => {
     kScaleRef.current = modelInfo?.kScale;

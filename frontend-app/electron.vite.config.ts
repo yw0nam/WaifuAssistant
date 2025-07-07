@@ -36,6 +36,10 @@ export default defineConfig({
             src: normalizePath(resolve(__dirname, 'node_modules/onnxruntime-web/dist/*.wasm')),
             dest: './libs/',
           },
+          {
+            src: normalizePath(resolve(__dirname, 'src/renderer/public/live2d-models/**/*')),
+            dest: './live2d-models/',
+          },
         ],
       }),
       react(),

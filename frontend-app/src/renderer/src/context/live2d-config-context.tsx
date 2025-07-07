@@ -3,7 +3,6 @@ import {
 } from 'react';
 import { useLocalStorage } from '@/hooks/utils/use-local-storage';
 import { useConfig } from '@/context/character-config-context';
-import { toaster } from '@/components/ui/toaster';
 
 /**
  * Model emotion mapping interface
@@ -139,7 +138,8 @@ export function Live2DConfigProvider({ children }: { children: React.ReactNode }
     "modelInfo",
     DEFAULT_CONFIG.modelInfo,
     {
-      filter: (value) => (value ? { ...value, url: "" } : value),
+      // Remove the filter that clears the URL - this was causing the model to not load
+      // filter: (value) => (value ? { ...value, url: "" } : value),
     },
   );
 
@@ -154,19 +154,19 @@ export function Live2DConfigProvider({ children }: { children: React.ReactNode }
    * @returns void
    */
   const setModelInfo = (info: ModelInfo | undefined) => {
-    // Skip if no model URL is provided (avoid localStorage modelInfo remaining)
+    // For debugging: always ensure we have the default model
     if (!info?.url) {
+      console.log("No model info provided, using default config");
+      setModelInfoState(DEFAULT_CONFIG.modelInfo);
       return;
     }
 
     // Validate configuration UID exists
     if (!confUid) {
-      console.warn("Attempting to set model info without confUid");
-      toaster.create({
-        title: "Attempting to set model info without confUid",
-        type: "error",
-        duration: 2000,
-      });
+      console.warn("No confUid available, using default model configuration");
+      // Use the provided info but ensure URL is preserved
+      const finalInfo = { ...info };
+      setModelInfoState(finalInfo);
       return;
     }
 
@@ -251,15 +251,39 @@ export function Live2DConfigProvider({ children }: { children: React.ReactNode }
   }, [isPet, modelInfo]);
   // Don't set confUid in the dependency beacause it will use old modelInfo to update.
 
+  // Effect to ensure default model is loaded when component mounts
+  useEffect(() => {
+    console.log("Live2D Config Provider mounted, checking model info:", { 
+      hasModelInfo: !!modelInfo, 
+      modelUrl: modelInfo?.url,
+      confUid 
+    });
+    
+    // If no model info or no URL, force load the default model
+    if (!modelInfo?.url) {
+      console.log("No model URL found, loading default model");
+      setModelInfoState(DEFAULT_CONFIG.modelInfo);
+    }
+  }, []); // Run only once on mount
+
   // Context value
   const contextValue = useMemo(
-    () => ({
-      modelInfo,
-      setModelInfo,
-      isLoading,
-      setIsLoading,
-      updateModelScale,
-    }),
+    () => {
+      console.log("Live2D Config context value updated:", {
+        hasModelInfo: !!modelInfo,
+        modelUrl: modelInfo?.url,
+        isLoading,
+        kScale: modelInfo?.kScale
+      });
+      
+      return {
+        modelInfo,
+        setModelInfo,
+        isLoading,
+        setIsLoading,
+        updateModelScale,
+      };
+    },
     [modelInfo, isLoading, updateModelScale],
   );
 

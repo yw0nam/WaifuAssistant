@@ -15,12 +15,20 @@ export const resetModelPosition = (
   initialYshift: number | undefined,
 ) => {
   if (!model) return;
+  
+  // Calculate the center position without any offset for perfect centering
+  const centerX = width / 2;
+  const centerY = height / 2;
+  
+  // Apply the initial offset if provided, otherwise keep at center
   const initXshift = Number(initialXshift || 0);
   const initYshift = Number(initialYshift || 0);
-  const targetX = (width - model.width) / 2 + initXshift;
-  const targetY = (height - model.height) / 2 + initYshift;
-
-  model.position.set(targetX, targetY);
+  
+  // Set position to center with offset
+  model.position.set(centerX + initXshift, centerY + initYshift);
+  
+  // Set the anchor point to center for proper centering
+  model.anchor.set(0.5, 0.5);
 };
 
 // Handle model scaling with smooth interpolation

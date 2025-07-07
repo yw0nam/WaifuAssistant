@@ -49,6 +49,14 @@ export function CharacterConfigProvider({ children }: { children: React.ReactNod
   const [confUid, setConfUid] = useState<string>(DEFAULT_CONFIG.confUid);
   const [configFiles, setConfigFiles] = useState<ConfigFile[]>(DEFAULT_CONFIG.configFiles);
 
+  // Set a default confUid if none is provided for Live2D model loading
+  useEffect(() => {
+    if (!confUid) {
+      console.log("No confUid set, using default for Live2D model");
+      setConfUid('default-character');
+    }
+  }, [confUid]);
+
   const getFilenameByName = useCallback(
     (name: string) => configFiles.find((config) => config.name === name)?.filename,
     [configFiles],
