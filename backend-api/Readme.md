@@ -1,7 +1,7 @@
 # How to run?
 
 ```
-uv run uvicorn src.main:app --port 8800 --reload
+uv run uvicorn src.main:app --port 8000 --reload
 ```
 
 ## How to test each modules?

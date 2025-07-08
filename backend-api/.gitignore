@@ -1,4 +1,20 @@
-.huggingface*
-*.pyc
-configs/persona*
-tests
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+tests/
+*.egg-info
+
+# Virtual environments
+.venv
+
+.DS_Store
+
+.env
+
+**.cache
+
+references
+data

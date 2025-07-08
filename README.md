@@ -190,6 +190,14 @@ Communication is handled via a JSON-based WebSocket protocol.
 
 ---
 
+
+## 📝 To-Do List
+
+- [ ] Add lipsync with TTS and Live2D model.
+- [ ] Add interaction based on emotion tags from the LLM.
+- [ ] Implement a sidebar in the UI to manage and interact with MCP tools.
+
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a pull request or open an issue.

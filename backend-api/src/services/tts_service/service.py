@@ -4,7 +4,6 @@ from typing import Literal, Optional
 from pydantic import BaseModel, Field, conint, model_validator
 from typing_extensions import Annotated
 import base64
-from src.utils.text_processor import TTSTextProcessor, ProcessedText
 from src.core.logging import setup_logging
 
 logger = setup_logging("tts_service")
@@ -62,8 +61,6 @@ class ChatWaifu_TTS:
     def __init__(self, url: str, api_key: Optional[str] = None):
         self.url = url
         self.api_key = api_key
-        # TTSTextProcessor 인스턴스를 내부적으로 소유합니다.
-        self.text_processor = TTSTextProcessor()
         self.session = requests.Session()
         headers = {"content-type": "application/msgpack"}
         if self.api_key:
@@ -120,11 +117,9 @@ class ChatWaifu_TTS:
             - "file": 저장 성공 여부 (bool)
             - 처리할 텍스트가 없거나 실패 시 None
         """
-        # 1. TTSTextProcessor를 사용해 텍스트 처리 및 정보 추출
-        processed_data: ProcessedText = self.text_processor.process_text(raw_text)
 
-        # 2. TTS로 처리할 텍스트가 있는지 확인
-        tts_text = processed_data.filtered_text
+        # 1. TTS로 처리할 텍스트가 있는지 확인
+        tts_text = raw_text.strip()
         if not tts_text:
             logger.info("TTS로 처리할 내용이 없어 스킵합니다.")
             return None
@@ -163,7 +158,7 @@ if __name__ == "__main__":
     tts_service = ChatWaifu_TTS(url=TTS_API_URL)
 
     # 2. LLM에서 받은 것과 유사한 원본 텍스트
-    llm_output_text = "<think>User seems happy. I should respond cheerfully.</think> (delighted) That's wonderful news! I'm so happy for you!"
+    llm_output_text = "(delighted) That's wonderful news! I'm so happy for you!"
 
     # 3. 서비스의 메인 메서드 하나만 호출하여 오디오 데이터 받기
     print("--- 'bytes' 포맷으로 오디오 생성 시도 ---")
