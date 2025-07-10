@@ -11,6 +11,7 @@ from src.services.llm_service.service import ChatWaifu_LLM, load_persona
 from src.services.tts_service.service import ChatWaifu_TTS
 from src.websocket.handlers import handle_websocket
 from src.configs import settings
+from src.configs.prompts import EMOTION_KEYWORDS, PERSONA
 
 # 로깅 설정
 logger = setup_logging()
@@ -21,7 +22,7 @@ app = create_app()
 # 전역 변수들 (초기화는 나중에)
 chat_waifu_llm = None
 chat_waifu_tts = None
-PERSONA = None
+PERSONA = PERSONA
 MCP_CONFIG = None
 
 
@@ -40,7 +41,6 @@ def initialize_services():
     chat_waifu_tts = ChatWaifu_TTS(
         url=settings.tts_configs.url, api_key=settings.tts_configs.api_key
     )
-    PERSONA = load_persona()
     MCP_CONFIG = settings.mcp_configs.mcp_servers
 
     # 시작 로그 (한 번만 출력)
