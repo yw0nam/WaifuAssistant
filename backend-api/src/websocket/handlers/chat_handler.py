@@ -141,19 +141,19 @@ async def handle_chat_request(
                     sentence_id += 1
 
             # 완료 응답 전송
-            complete_response = LLMCompleteResponse(
-                text=full_ai_response,
-                tts_enabled=request.enable_tts,
-                token_count=len(full_ai_response.split()),  # 대략적인 토큰 수
-            )
-            await websocket.send_json(complete_response.model_dump())
+            # complete_response = LLMCompleteResponse(
+            #     text=full_ai_response,
+            #     tts_enabled=request.enable_tts,
+            #     token_count=len(full_ai_response.split()),  # 대략적인 토큰 수
+            # )
+            # await websocket.send_json(complete_response.model_dump())
 
             # Legacy TTS processing (fallback if streaming TTS is disabled)
-            if request.enable_tts and not streaming_processor:
-                await add_tts_to_queue(
-                    str(client_id), full_ai_response, request.reference_id
-                )
-                logger.info(f"Client #{client_id} 레거시 TTS 큐에 추가됨")
+            # if request.enable_tts and not streaming_processor:
+            #     await add_tts_to_queue(
+            #         str(client_id), full_ai_response, request.reference_id
+            #     )
+            #     logger.info(f"Client #{client_id} 레거시 TTS 큐에 추가됨")
 
     finally:
         # AI 응답 완료 - 상태 해제

@@ -150,10 +150,10 @@ class WebSocketService {
     }
   }
 
-  sendMessage(message: object) {
+  sendMessage(message: object, options?: { referenceId?: string }) {
     if (this.ws?.readyState === WebSocket.OPEN) {
       // Adapt outgoing messages for WaifuAssistant format
-      const adaptedMessage = this.waifuAdapter.adaptOutgoingMessage(message);
+      const adaptedMessage = this.waifuAdapter.adaptOutgoingMessage(message, options);
       this.ws.send(JSON.stringify(adaptedMessage));
     } else {
       console.warn('WebSocket is not open. Unable to send message:', message);

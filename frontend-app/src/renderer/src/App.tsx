@@ -24,6 +24,7 @@ import { InputSubtitle } from './components/electron/input-subtitle';
 import { ProactiveSpeakProvider } from './context/proactive-speak-context';
 import { ScreenCaptureProvider } from './context/screen-capture-context';
 import { GroupProvider } from './context/group-context';
+import { TTSSettingsProvider } from './context/tts-settings-context';
 
 // eslint-disable-next-line import/no-extraneous-dependencies, import/newline-after-import
 import "@chatscope/chat-ui-kit-styles/dist/default/styles.min.css";
@@ -76,13 +77,14 @@ function App(): JSX.Element {
             <CharacterConfigProvider>
               <ChatHistoryProvider>
                 <AiStateProvider>
-                  <ProactiveSpeakProvider>
-                    <Live2DConfigProvider>
-                      <SubtitleProvider>
-                        <VADProvider>
-                          <BgUrlProvider>
-                            <GroupProvider>
-                              <WebSocketHandler>
+                  <TTSSettingsProvider>
+                    <ProactiveSpeakProvider>
+                      <Live2DConfigProvider>
+                        <SubtitleProvider>
+                          <VADProvider>
+                            <BgUrlProvider>
+                              <GroupProvider>
+                                <WebSocketHandler>
                                 <Toaster />
                                 {mode === 'window' ? (
                                   <>
@@ -132,12 +134,13 @@ function App(): JSX.Element {
                       </SubtitleProvider>
                     </Live2DConfigProvider>
                   </ProactiveSpeakProvider>
-                </AiStateProvider>
-              </ChatHistoryProvider>
-            </CharacterConfigProvider>
-          </ScreenCaptureProvider>
-        </CameraProvider>
-      </Live2DModelProvider>
+                </TTSSettingsProvider>
+              </AiStateProvider>
+            </ChatHistoryProvider>
+          </CharacterConfigProvider>
+        </ScreenCaptureProvider>
+      </CameraProvider>
+    </Live2DModelProvider>
     </ChakraProvider>
   );
 }

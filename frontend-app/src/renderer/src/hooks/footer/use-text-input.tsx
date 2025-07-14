@@ -1,15 +1,18 @@
 import { useState } from 'react';
 import { useWebSocket } from '@/context/websocket-context';
+import { useTTSSettings } from '@/context/tts-settings-context';
 import { useAiState } from '@/context/ai-state-context';
 import { useInterrupt } from '@/components/canvas/live2d';
 import { useChatHistory } from '@/context/chat-history-context';
 import { useVAD } from '@/context/vad-context';
 import { useMediaCapture } from '@/hooks/utils/use-media-capture';
+import { wsService } from '@/services/websocket-service';
 
 export function useTextInput() {
   const [inputText, setInputText] = useState('');
   const [isComposing, setIsComposing] = useState(false);
   const wsContext = useWebSocket();
+  const { settings: ttsSettings } = useTTSSettings();
   const { aiState, setAiState } = useAiState();
   const { interrupt } = useInterrupt();
   const { appendHumanMessage } = useChatHistory();
@@ -29,10 +32,14 @@ export function useTextInput() {
     const images = await captureAllMedia();
 
     appendHumanMessage(inputText.trim());
-    wsContext.sendMessage({
+    
+    // Use wsService directly to include TTS settings
+    wsService.sendMessage({
       type: 'text-input',
       text: inputText.trim(),
       images,
+    }, {
+      referenceId: ttsSettings.referenceId || undefined,
     });
 
     setAiState('thinking-speaking');

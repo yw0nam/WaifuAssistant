@@ -18,14 +18,13 @@ export interface WaifuOutgoingMessage {
   type: 'chat' | 'tts_interrupt' | 'ping';
   text?: string;
   enable_tts?: boolean;
+  reference_id?: string;
   reason?: string;
   timestamp?: number;
 }
 
 export class WaifuAdapter {
   private static instance: WaifuAdapter;
-  private messageQueue: string[] = [];
-  private currentChunkId = 0;
 
   static getInstance() {
     if (!WaifuAdapter.instance) {
@@ -94,14 +93,15 @@ export class WaifuAdapter {
   /**
    * Convert frontend message to WaifuAssistant format
    */
-  adaptOutgoingMessage(frontendMessage: any): WaifuOutgoingMessage {
+  adaptOutgoingMessage(frontendMessage: any, options?: { referenceId?: string }): WaifuOutgoingMessage {
     switch (frontendMessage.type) {
       case 'send-message':
       case 'text-input':
         return {
           type: 'chat',
           text: frontendMessage.text || '',
-          enable_tts: true
+          enable_tts: true,
+          reference_id: options?.referenceId
         };
 
       case 'interrupt':
