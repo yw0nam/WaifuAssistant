@@ -1,10 +1,10 @@
 {
-  "mcp_servers": {
-    "tavily-mcp": {
-        "command": "npx",
-        "args": ["-y", "tavily-mcp@0.2.4"],
-        "env": {"TAVILY_API_KEY": "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"},
-        "transport": "stdio"
+  "sequential-thinking": {
+    "command": "npx",
+    "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
+  },
+  "context7": {
+      "type": "http",
+      "url": "https://mcp.context7.com/mcp"
     }
   }
-}
