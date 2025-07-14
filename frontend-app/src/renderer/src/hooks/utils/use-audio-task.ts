@@ -21,7 +21,7 @@ interface AudioTaskOptions {
 export const useAudioTask = () => {
   const { aiState, backendSynthComplete, setBackendSynthComplete } = useAiState();
   const { setSubtitleText } = useSubtitle();
-  const { appendResponse, appendAIMessage } = useChatHistory();
+  const { appendAIMessage } = useChatHistory();
   const { currentModel } = useLive2DModel();
   const { sendMessage } = useWebSocket();
 
@@ -29,7 +29,6 @@ export const useAudioTask = () => {
     aiState,
     currentModel,
     setSubtitleText,
-    appendResponse,
     appendAIMessage,
   });
 
@@ -37,7 +36,6 @@ export const useAudioTask = () => {
     aiState,
     currentModel,
     setSubtitleText,
-    appendResponse,
     appendAIMessage,
   };
 
@@ -46,7 +44,6 @@ export const useAudioTask = () => {
       aiState: currentAiState,
       currentModel: model,
       setSubtitleText: updateSubtitle,
-      appendResponse: appendText,
       appendAIMessage: appendAI,
     } = stateRef.current;
 
@@ -59,7 +56,6 @@ export const useAudioTask = () => {
     const { audioBase64, displayText, expressions, forwarded } = options;
 
     if (displayText) {
-      appendText(displayText.text);
       appendAI(displayText.text, displayText.name, displayText.avatar);
       if (audioBase64) {
         updateSubtitle(displayText.text);
@@ -151,6 +147,5 @@ export const useAudioTask = () => {
 
   return {
     addAudioTask,
-    appendResponse,
   };
 };

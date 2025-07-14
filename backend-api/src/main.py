@@ -11,7 +11,7 @@ from src.services.llm_service.service import ChatWaifu_LLM, load_persona
 from src.services.tts_service.service import ChatWaifu_TTS
 from src.websocket.handlers import handle_websocket
 from src.configs import settings
-from src.configs.prompts import EMOTION_KEYWORDS, PERSONA
+from src.configs.prompts import EMOTION_KEYWORDS, NANAMI
 
 # 로깅 설정
 logger = setup_logging()
@@ -22,7 +22,8 @@ app = create_app()
 # 전역 변수들 (초기화는 나중에)
 chat_waifu_llm = None
 chat_waifu_tts = None
-PERSONA = PERSONA
+USER_NAME = "エクリア"
+PERSONA = NANAMI.format(your_name=USER_NAME)
 MCP_CONFIG = None
 
 
