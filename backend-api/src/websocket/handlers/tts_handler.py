@@ -7,7 +7,7 @@ This module handles TTS interruption requests and manages TTS queue operations.
 from fastapi import WebSocket
 from src.core.logging import setup_logging
 from ..models import TTSInterruptRequest, TTSInterruptedResponse
-from ..tts_worker import interrupt_tts
+from src.services.tts_service.tts_worker import interrupt_tts
 from .error_handler import send_error_response
 
 logger = setup_logging("websocket_tts_handler")

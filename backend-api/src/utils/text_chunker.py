@@ -106,12 +106,12 @@ def process_stream_pipeline(
                     yield processed_data  # 처리된 결과를 하나씩 반환
 
     # 2. 남아있는 버퍼 최종 처리
-    final_sentences = chunk_processor.finalize()
-    if final_sentences:
-        for sentence in final_sentences:
-            processed_data = text_processor.process_text(sentence)
-            if processed_data and processed_data.filtered_text:
-                yield processed_data  # 최종 결과도 하나씩 반환
+    # final_sentences = chunk_processor.finalize()
+    # if final_sentences:
+    #     for sentence in final_sentences:
+    #         processed_data = text_processor.process_text(sentence)
+    #         if processed_data and processed_data.filtered_text:
+    #             yield processed_data  # 최종 결과도 하나씩 반환
 
 
 # --- 최적화된 사용 예제 ---
@@ -144,8 +144,6 @@ if __name__ == "__main__":
 
     print("--- 스트리밍 처리 시작 (최적화된 방식) ---")
 
-    # 제너레이터 함수를 사용하면 단 하나의 for 루프로 모든 것을 처리할 수 있습니다.
-    # 복잡한 로직은 모두 함수 안에 숨겨져 있죠.
     all_processed_results = [
         result
         for result in process_stream_pipeline(

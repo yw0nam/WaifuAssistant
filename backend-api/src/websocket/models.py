@@ -82,7 +82,9 @@ class ContentResponse(BaseModel):
 
     type: ResponseType = Field(default=ResponseType.CONTENT)
     text: str = Field(..., description="스트리밍 텍스트 청크")
-    chunk_id: Optional[int] = Field(default=None, description="청크 순서")
+    emotion_tag: Optional[str] = Field(
+        default=None, description="감정 태그 (예: happy, sad 등)"
+    )
 
 
 class AudioResponse(BaseModel):
@@ -136,8 +138,6 @@ class StreamingTTSResponse(BaseModel):
 
     type: ResponseType = Field(default=ResponseType.STREAMING_TTS)
     sentence: str = Field(..., description="TTS로 변환될 완성된 문장")
-    sentence_id: int = Field(..., description="문장 순서 ID")
-    is_final: bool = Field(default=False, description="마지막 문장 여부")
 
 
 # Union 타입들

@@ -14,17 +14,56 @@ from typing import Dict, List
 from fastapi import WebSocket
 from langchain_core.messages import HumanMessage, AIMessage
 from src.services.llm_service.service import ChatWaifu_LLM
-from src.utils.text_chunker import TextChunkProcessor
+from src.utils.text_chunker import (
+    TextChunkProcessor,
+    TTSTextProcessor,
+)
 from src.core.logging import setup_logging
 from ..models import (
     ChatRequest,
     ContentResponse,
     StreamingTTSResponse,
-    LLMCompleteResponse,
 )
-from ..tts_worker import add_tts_to_queue
+from ...services.tts_service.tts_worker import add_tts_to_queue
 
 logger = setup_logging("websocket_chat_handler")
+
+
+async def process_chat_request(
+    streaming_processor: TextChunkProcessor,
+    text_processor: TTSTextProcessor,
+    websocket: WebSocket,
+    client_id: str,
+    request: ChatRequest,
+    result: dict,
+):
+
+    chunk_text = result.get("text")
+    complete_sentences = streaming_processor.add_chunk(chunk_text)
+    if not complete_sentences:
+        return []
+    else:
+        for sentence in complete_sentences:
+            processed_data = text_processor.process_text(sentence)
+            if processed_data and processed_data.filtered_text:
+                content_response = ContentResponse(
+                    text=processed_data.filtered_text,
+                    node=result.get("node"),
+                    emotion_tag=processed_data.emotion_tag,
+                )
+                await websocket.send_json(content_response.model_dump())
+
+                await add_tts_to_queue(
+                    client_id=str(client_id),
+                    sentence=sentence,
+                    reference_id=request.reference_id,
+                )
+                logger.info(f"Client #{client_id} '{sentence[:50]}...'")
+                if request.enable_tts:
+                    streaming_tts_response = StreamingTTSResponse(
+                        sentence=sentence,
+                    )
+                    await websocket.send_json(streaming_tts_response.model_dump())
 
 
 async def handle_chat_request(
@@ -59,55 +98,29 @@ async def handle_chat_request(
 
     try:
         # Initialize streaming TTS processor if TTS is enabled
-        streaming_processor = None
-        sentence_id = 0
+        streaming_processor = TextChunkProcessor(
+            reasoning_start_tag=request.reasoning_start_tag,
+            reasoning_end_tag=request.reasoning_end_tag,
+        )
+        text_processor = TTSTextProcessor()
 
-        if request.enable_tts:
-            streaming_processor = TextChunkProcessor(
-                reasoning_start_tag=request.reasoning_start_tag,
-                reasoning_end_tag=request.reasoning_end_tag,
-            )
-            logger.info(
-                f"Client #{client_id} 스트리밍 TTS 프로세서 초기화 (reasoning_tags: '{request.reasoning_start_tag}' -> '{request.reasoning_end_tag}')"
-            )
+        logger.info(
+            f"Client #{client_id} 스트리밍 프로세서 초기화 (reasoning_tags: '{request.reasoning_start_tag}' -> '{request.reasoning_end_tag}')"
+        )
 
-        chunk_id = 0
         async for result in chat_waifu_llm.stream(
             message=message_history, mcp_config=mcp_config, client_id=client_id
         ):
             # 텍스트 콘텐츠가 있고, 노드가 'agent'인 경우에만 TTS 처리
             if result.get("node") == "agent" and result.get("type") == "content":
-                chunk_text = result.get("text")
-                complete_sentences = streaming_processor.add_chunk(chunk_text)
-
-                for sentence in complete_sentences:
-                    content_response = ContentResponse(
-                        text=sentence,
-                        chunk_id=chunk_id,
-                        node=result.get("node"),
-                    )
-                    await websocket.send_json(content_response.model_dump())
-
-                    await add_tts_to_queue(
-                        client_id=str(client_id),
-                        sentence=sentence,
-                        reference_id=request.reference_id,
-                    )
-
-                    streaming_tts_response = StreamingTTSResponse(
-                        sentence=sentence,
-                        sentence_id=sentence_id,
-                        is_final=False,
-                    )
-
-                    await websocket.send_json(streaming_tts_response.model_dump())
-
-                    # Add to TTS queue immediately with reference_id
-                    logger.info(
-                        f"Client #{client_id} 스트리밍 TTS 문장 #{sentence_id} (from agent): '{sentence[:50]}...'"
-                    )
-                    sentence_id += 1
-                chunk_id += 1
+                process_chat_request(
+                    streaming_processor,
+                    text_processor,
+                    websocket,
+                    client_id,
+                    request,
+                    result,
+                )
 
             elif result.get("type") == "tool_call":
                 logger.info(
@@ -122,6 +135,8 @@ async def handle_chat_request(
                     f"Client #{client_id} 상태 업데이트: {result.get('message_history')}, message: {result.get('message')}"
                 )
                 message_history = result.get("message_history", message_history)
+                streaming_processor.reset()
+
     finally:
         # AI 응답 완료 - 상태 해제
         client_ai_responding[client_id] = False

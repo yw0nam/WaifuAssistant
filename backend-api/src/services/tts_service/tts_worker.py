@@ -6,7 +6,7 @@ from fastapi import WebSocket
 # ChatWaifu_TTS 서비스와 모델을 임포트합니다.
 from src.services.tts_service.service import ChatWaifu_TTS
 from src.core.logging import setup_logging
-from .models import AudioResponse, ErrorResponse
+from src.websocket.models import AudioResponse, ErrorResponse
 
 logger = setup_logging("tts_worker")
 

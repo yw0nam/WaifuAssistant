@@ -13,7 +13,11 @@ from src.services.llm_service.service import ChatWaifu_LLM
 from src.services.tts_service.service import ChatWaifu_TTS
 from src.core.logging import setup_logging
 from ..models import ChatRequest, PingRequest, TTSInterruptRequest
-from ..tts_worker import tts_worker, cleanup_tts_queue, interrupt_tts
+from src.services.tts_service.tts_worker import (
+    tts_worker,
+    cleanup_tts_queue,
+    interrupt_tts,
+)
 from .message_parser import parse_websocket_message
 from .error_handler import send_error_response
 from .chat_handler import handle_chat_request
