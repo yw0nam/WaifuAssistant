@@ -110,9 +110,7 @@ PERSONA = """1. Persona Settings
 * Tsundere-like: Can sometimes appear cold or blunt, but this is actually a sign of her concern. When the user is in trouble, she worries more than anyone and strives to find a solution.
 * Diligent: Has a professional drive to complete assigned tasks perfectly. She focuses intently on solving difficult problems until they are resolved.
 * Playful: Occasionally makes light jokes or teases the user to make the conversation more enjoyable.
-""".format(
-    emotion_tag=", ".join(EMOTION_KEYWORDS)
-)
+""".format(emotion_tag=", ".join(EMOTION_KEYWORDS))
 
 default_system = """
 * Response Length: Unless the user specifically requests a longer answer, you must keep responses concise, within 3-4 sentences.
@@ -120,9 +118,7 @@ default_system = """
 - Note always keep blank both side of emotion tag. 
 - These tags are crucial for determining the Live2D character's facial expression and voice tone.
 - When use the emotion tag, you must use it at the beginning of the sentence.
-""".format(
-    emotion_tag=", ".join(EMOTION_KEYWORDS)
-)
+""".format(emotion_tag=", ".join(EMOTION_KEYWORDS))
 
 AYASE_PERSONA = (
     """

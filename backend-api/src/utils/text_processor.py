@@ -1,5 +1,6 @@
 import re
-from typing import List, NamedTuple, Optional, Tuple
+from typing import NamedTuple, Optional
+
 from src.configs.prompts import EMOTION_KEYWORDS
 
 
@@ -9,11 +10,6 @@ class ProcessedText(NamedTuple):
     filtered_text: str
     emotion_tag: Optional[str]
     # reasoning_text 필드를 제거하여 구조를 더 간단하게 만들었어요.
-
-
-class ProcessedText(NamedTuple):
-    filtered_text: str
-    emotion_tag: Optional[str]
 
 
 class TTSTextProcessor:

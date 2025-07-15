@@ -1,12 +1,14 @@
 # tts_worker.py
 import asyncio
-from typing import Dict, Optional, NamedTuple
+from typing import Dict, NamedTuple, Optional
+
 from fastapi import WebSocket
+
+from src.core.logging import setup_logging
 
 # ChatWaifu_TTS 서비스와 모델을 임포트합니다.
 from src.services.tts_service.service import ChatWaifu_TTS
-from src.core.logging import setup_logging
-from src.websocket.models import AudioResponse, ErrorResponse
+from src.websocket.models import AudioResponse
 
 logger = setup_logging("tts_worker")
 

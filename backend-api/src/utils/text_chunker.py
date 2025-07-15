@@ -1,7 +1,8 @@
 import re
-from typing import Iterable, List, Generator
+from typing import Generator, Iterable, List
+
 from src.core.logging import setup_logging
-from src.utils.text_processor import TTSTextProcessor, ProcessedText
+from src.utils.text_processor import ProcessedText, TTSTextProcessor
 
 logger = setup_logging("streaming_processor")
 

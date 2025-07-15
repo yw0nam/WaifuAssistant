@@ -7,20 +7,23 @@ and resource cleanup.
 
 import asyncio
 from typing import Dict
+
 from fastapi import WebSocket, WebSocketDisconnect
 from langchain_core.messages import SystemMessage
+
+from src.core.logging import setup_logging
 from src.services.llm_service.service import ChatWaifu_LLM
 from src.services.tts_service.service import ChatWaifu_TTS
-from src.core.logging import setup_logging
-from ..models import ChatRequest, PingRequest, TTSInterruptRequest
 from src.services.tts_service.tts_worker import (
-    tts_worker,
     cleanup_tts_queue,
     interrupt_tts,
+    tts_worker,
 )
-from .message_parser import parse_websocket_message
-from .error_handler import send_error_response
+
+from ..models import ChatRequest, PingRequest, TTSInterruptRequest
 from .chat_handler import handle_chat_request
+from .error_handler import send_error_response
+from .message_parser import parse_websocket_message
 from .ping_handler import handle_ping_request
 from .tts_handler import handle_tts_interrupt_request
 
@@ -148,18 +151,6 @@ async def handle_websocket(
                 logger.error(
                     f"Client #{client_id} message handling error: {message_error}"
                 )
-                # Try to send error response, but don't crash if it fails
-                try:
-                    await send_error_response(
-                        websocket,
-                        "Connection error occurred.",
-                        error_code="CONNECTION_ERROR",
-                    )
-                except:
-                    logger.error(
-                        f"Failed to send error response to client #{client_id}"
-                    )
-                break
 
     except WebSocketDisconnect:
         logger.info(f"Client #{client_id} disconnected during connection. Goodbye! 😢")

@@ -1,6 +1,7 @@
-from pydantic import BaseModel, Field
-from typing import Optional, Union
 from enum import Enum
+from typing import Optional, Union
+
+from pydantic import BaseModel, Field
 
 
 class MessageType(str, Enum):

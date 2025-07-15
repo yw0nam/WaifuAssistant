@@ -4,7 +4,6 @@ __pycache__/
 build/
 dist/
 wheels/
-tests/
 *.egg-info
 
 # Virtual environments
@@ -18,3 +17,5 @@ tests/
 
 references
 data
+
+.plan

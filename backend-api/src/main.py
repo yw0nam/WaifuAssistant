@@ -1,17 +1,18 @@
-import sys
 import os
+import sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fastapi import WebSocket
 from langchain_openai import ChatOpenAI
+
+from src.configs import settings
+from src.configs.prompts import NANAMI
 from src.core.app import create_app
 from src.core.logging import setup_logging
-from src.services.llm_service.service import ChatWaifu_LLM, load_persona
+from src.services.llm_service.service import ChatWaifu_LLM
 from src.services.tts_service.service import ChatWaifu_TTS
 from src.websocket.handlers import handle_websocket
-from src.configs import settings
-from src.configs.prompts import EMOTION_KEYWORDS, NANAMI
 
 # 로깅 설정
 logger = setup_logging()
@@ -45,7 +46,7 @@ def initialize_services():
     MCP_CONFIG = settings.mcp_configs.mcp_servers
 
     # 시작 로그 (한 번만 출력)
-    logger.info(f"🚀 서버 시작! http://localhost:8800 에서 접속 대기 중...")
+    logger.info("🚀 서버 시작! http://localhost:8800 에서 접속 대기 중...")
     logger.info(
         f"▶️ LLM 설정: 모델='{settings.llm_configs.model}', API Base='{settings.llm_configs.openai_api_base}'"
     )

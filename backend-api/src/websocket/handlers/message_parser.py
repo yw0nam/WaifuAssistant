@@ -7,13 +7,10 @@ converting them to appropriate request objects.
 
 import json
 from typing import Union
+
 from pydantic import ValidationError
-from ..models import (
-    ChatRequest,
-    PingRequest,
-    TTSInterruptRequest,
-    MessageType,
-)
+
+from ..models import ChatRequest, MessageType, PingRequest, TTSInterruptRequest
 
 
 async def parse_websocket_message(

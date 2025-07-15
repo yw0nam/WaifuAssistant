@@ -1,5 +1,5 @@
-from .models import AppConfig, LLMSettings, TTSSettings, MCPSettings
-from .loader import load_config, get_settings
+from .loader import get_settings, load_config
+from .models import AppConfig, LLMSettings, MCPSettings, TTSSettings
 
 # 전역 설정 객체
 settings = get_settings()

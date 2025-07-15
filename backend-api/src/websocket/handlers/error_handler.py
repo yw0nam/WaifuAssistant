@@ -6,7 +6,9 @@ including error response formatting and sending.
 """
 
 from fastapi import WebSocket
+
 from src.core.logging import setup_logging
+
 from ..models import ErrorResponse
 
 logger = setup_logging("websocket_error_handler")

@@ -11,20 +11,16 @@ TODO: This module could be further modularized into:
 """
 
 from typing import Dict, List
+
 from fastapi import WebSocket
-from langchain_core.messages import HumanMessage, AIMessage
-from src.services.llm_service.service import ChatWaifu_LLM
-from src.utils.text_chunker import (
-    TextChunkProcessor,
-    TTSTextProcessor,
-)
+from langchain_core.messages import HumanMessage
+
 from src.core.logging import setup_logging
-from ..models import (
-    ChatRequest,
-    ContentResponse,
-    StreamingTTSResponse,
-)
+from src.services.llm_service.service import ChatWaifu_LLM
+from src.utils.text_chunker import TextChunkProcessor, TTSTextProcessor
+
 from ...services.tts_service.tts_worker import add_tts_to_queue
+from ..models import ChatRequest, ContentResponse, StreamingTTSResponse
 
 logger = setup_logging("websocket_chat_handler")
 
@@ -37,7 +33,6 @@ async def process_chat_request(
     request: ChatRequest,
     result: dict,
 ):
-
     chunk_text = result.get("text")
     complete_sentences = streaming_processor.add_chunk(chunk_text)
     if not complete_sentences:
