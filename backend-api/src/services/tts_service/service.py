@@ -1,9 +1,11 @@
-import requests
-import ormsgpack
+import base64
 from typing import Literal, Optional
+
+import ormsgpack
+import requests
 from pydantic import BaseModel, Field, conint, model_validator
 from typing_extensions import Annotated
-import base64
+
 from src.core.logging import setup_logging
 
 logger = setup_logging("tts_service")
@@ -182,6 +184,6 @@ if __name__ == "__main__":
     )
 
     if file_audio:
-        print(f"성공! 파일로 저장되었습니다: output.wav")
+        print("성공! 파일로 저장되었습니다: output.wav")
     else:
         print("실패.")

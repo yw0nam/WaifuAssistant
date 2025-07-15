@@ -1,12 +1,14 @@
 # tts_worker.py
 import asyncio
-from typing import Dict, Optional, NamedTuple
+from typing import Dict, NamedTuple, Optional
+
 from fastapi import WebSocket
+
+from src.core.logging import setup_logging
 
 # ChatWaifu_TTS 서비스와 모델을 임포트합니다.
 from src.services.tts_service.service import ChatWaifu_TTS
-from src.core.logging import setup_logging
-from .models import AudioResponse, ErrorResponse
+from src.websocket.models import AudioResponse
 
 logger = setup_logging("tts_worker")
 
@@ -105,11 +107,11 @@ async def tts_worker(
 
 
 async def add_tts_to_queue(
-    client_id: str, text: str, reference_id: Optional[str] = None
+    client_id: str, sentence: str, reference_id: Optional[str] = None
 ):
     """TTS 큐에 요청을 추가합니다."""
     if client_id in tts_queues:
-        tts_request = TTSRequest(text=text, reference_id=reference_id)
+        tts_request = TTSRequest(text=sentence, reference_id=reference_id)
         await tts_queues[client_id].put(tts_request)
     else:
         logger.warning(f"TTS 큐를 찾을 수 없음: client #{client_id}")

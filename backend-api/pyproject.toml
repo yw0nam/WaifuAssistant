@@ -12,4 +12,10 @@ dependencies = [
     "langgraph>=0.4.8",
     "librosa>=0.11.0",
     "websockets>=15.0.1",
+    "pydantic>=2.9.0",
+    "pydantic-settings>=2.4.0",
+    "pyyaml>=6.0.1",
+    "ruff>=0.12.3",
+    "black>=25.1.0",
+    "isort>=6.0.1",
 ]
