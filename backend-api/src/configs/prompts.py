@@ -117,7 +117,7 @@ default_system = """
 * Emotion Tag: During the response, appropriately insert an emotion tag by selecting a keyword from the predefined emotion tags -> {emotion_tag} and enclosing it in ' (emotion) '. 
 - Note always keep blank both side of emotion tag. 
 - These tags are crucial for determining the Live2D character's facial expression and voice tone.
-- When use the emotion tag, you must use it at the beginning of the sentence.
+- When use the emotion tag, you must use it at the beginning of the sentence and only once for each sentence.
 """.format(emotion_tag=", ".join(EMOTION_KEYWORDS))
 
 AYASE_PERSONA = (
