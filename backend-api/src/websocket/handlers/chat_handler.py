@@ -71,90 +71,57 @@ async def handle_chat_request(
                 f"Client #{client_id} 스트리밍 TTS 프로세서 초기화 (reasoning_tags: '{request.reasoning_start_tag}' -> '{request.reasoning_end_tag}')"
             )
 
-        ai_response_text_chunks = []
         chunk_id = 0
-
         async for result in chat_waifu_llm.stream(
-            message=message_history, mcp_config=mcp_config
+            message=message_history, mcp_config=mcp_config, client_id=client_id
         ):
             # 텍스트 콘텐츠가 있고, 노드가 'agent'인 경우에만 TTS 처리
-            if result.get("type") == "content" and result.get("text"):
-                # --- NEW: node 기반 TTS 필터링 로직 ---
-                is_agent_response = result.get("node") == "agent"
+            if result.get("node") == "agent" and result.get("type") == "content":
+                chunk_text = result.get("text")
+                complete_sentences = streaming_processor.add_chunk(chunk_text)
 
-                # ai_response_text_chunks에는 에이전트 응답만 저장하여 대화 기록을 깨끗하게 유지
-                if is_agent_response:
-                    ai_response_text_chunks.append(result.get("text"))
-
-                # TTS 처리는 오직 'agent' 노드에서 온 텍스트에 대해서만 수행
-                if streaming_processor and request.enable_tts and is_agent_response:
-                    chunk_text = result.get("text")
-                    complete_sentences = streaming_processor.add_chunk(chunk_text)
-
-                    # Send complete sentences immediately for TTS
-                    for sentence in complete_sentences:
-                        content_response = ContentResponse(
-                            text=sentence,
-                            chunk_id=chunk_id,
-                            node=result.get("node"),
-                        )
-                        await websocket.send_json(content_response.model_dump())
-
-                        streaming_tts_response = StreamingTTSResponse(
-                            sentence=sentence,
-                            sentence_id=sentence_id,
-                            is_final=False,
-                        )
-                        await websocket.send_json(streaming_tts_response.model_dump())
-
-                        # Add to TTS queue immediately with reference_id
-                        await add_tts_to_queue(
-                            str(client_id), sentence, request.reference_id
-                        )
-                        logger.info(
-                            f"Client #{client_id} 스트리밍 TTS 문장 #{sentence_id} (from agent): '{sentence[:50]}...'"
-                        )
-                        sentence_id += 1
-                elif request.enable_tts and not is_agent_response:
-                    logger.debug(
-                        f"TTS 스킵 (node: {result.get('node')}): '{result.get('text')[:30]}...'"
+                for sentence in complete_sentences:
+                    content_response = ContentResponse(
+                        text=sentence,
+                        chunk_id=chunk_id,
+                        node=result.get("node"),
                     )
-                # ----------------------------------------
+                    await websocket.send_json(content_response.model_dump())
 
-                chunk_id += 1
-
-        # LLM 응답 완료 처리
-        if ai_response_text_chunks:
-            full_ai_response = "".join(ai_response_text_chunks)
-            message_history.append(AIMessage(content=full_ai_response))
-            logger.info(f"LLM 응답 (Client #{client_id}): '{full_ai_response}'")
-
-            if streaming_processor and request.enable_tts:
-                final_sentences = streaming_processor.finalize()
-                for sentence in final_sentences:
                     await add_tts_to_queue(
-                        str(client_id), sentence, request.reference_id
+                        client_id=str(client_id),
+                        sentence=sentence,
+                        reference_id=request.reference_id,
                     )
+
+                    streaming_tts_response = StreamingTTSResponse(
+                        sentence=sentence,
+                        sentence_id=sentence_id,
+                        is_final=False,
+                    )
+
+                    await websocket.send_json(streaming_tts_response.model_dump())
+
+                    # Add to TTS queue immediately with reference_id
                     logger.info(
-                        f"Client #{client_id} 최종 TTS 문장 #{sentence_id}: '{sentence[:50]}...'"
+                        f"Client #{client_id} 스트리밍 TTS 문장 #{sentence_id} (from agent): '{sentence[:50]}...'"
                     )
                     sentence_id += 1
+                chunk_id += 1
 
-            # 완료 응답 전송
-            # complete_response = LLMCompleteResponse(
-            #     text=full_ai_response,
-            #     tts_enabled=request.enable_tts,
-            #     token_count=len(full_ai_response.split()),  # 대략적인 토큰 수
-            # )
-            # await websocket.send_json(complete_response.model_dump())
-
-            # Legacy TTS processing (fallback if streaming TTS is disabled)
-            # if request.enable_tts and not streaming_processor:
-            #     await add_tts_to_queue(
-            #         str(client_id), full_ai_response, request.reference_id
-            #     )
-            #     logger.info(f"Client #{client_id} 레거시 TTS 큐에 추가됨")
-
+            elif result.get("type") == "tool_call":
+                logger.info(
+                    f"Client #{client_id} 도구 호출: {result.get('tool_name')} (args: {result.get('args')})"
+                )
+            elif result.get("node") == "tools":
+                logger.info(
+                    f"Client #{client_id} 도구 응답: {result.get('tool_name')} (args: {result.get('args')})"
+                )
+            elif result.get("type") == "end":
+                logger.info(
+                    f"Client #{client_id} 상태 업데이트: {result.get('message_history')}, message: {result.get('message')}"
+                )
+                message_history = result.get("message_history", message_history)
     finally:
         # AI 응답 완료 - 상태 해제
         client_ai_responding[client_id] = False

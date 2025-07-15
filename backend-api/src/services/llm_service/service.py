@@ -2,6 +2,7 @@ import logging
 from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
+from langgraph.checkpoint.memory import MemorySaver
 from langchain_core.messages import AIMessageChunk
 import yaml
 from pathlib import Path
@@ -36,7 +37,7 @@ class ChatWaifu_LLM(object):
         self.llm = llm
         logger.info(f"ChatWaifu_LLM initialized with model: {self.llm.model_name}")
 
-    async def process_message(self, messages, agent):
+    async def process_message(self, messages, agent, config: str):
         """메시지를 처리하고 스트리밍 응답을 생성합니다."""
         logger.debug(f"Processing message with agent for {len(messages)} messages")
 
@@ -46,7 +47,7 @@ class ChatWaifu_LLM(object):
         content_buffer = ""
 
         # 개선된 버퍼링 설정
-        MIN_BUFFER_SIZE = 15  # 최소 버퍼 크기 (더 큰 청크로 전송)
+        MIN_BUFFER_SIZE = 20  # 최소 버퍼 크기 (더 큰 청크로 전송)
         MAX_BUFFER_SIZE = 100  # 최대 버퍼 크기 (메모리 보호)
 
         # 문장 종료 문자 (더 자연스러운 분할점)
@@ -57,8 +58,7 @@ class ChatWaifu_LLM(object):
 
         try:
             async for msg, metadata in agent.astream(
-                {"messages": messages},
-                stream_mode="messages",
+                {"messages": messages}, stream_mode="messages", config=config
             ):
                 # 노드 변경 처리 (로깅만, 클라이언트 전송 없음)
                 if node != metadata.get("langgraph_node"):
@@ -157,10 +157,10 @@ class ChatWaifu_LLM(object):
                 yield {"type": "content", "text": content_buffer.strip(), "node": node}
             yield {"type": "error", "message": "메시지 처리 중 오류가 발생했습니다."}
 
-    async def stream(self, message: list, mcp_config: dict):
+    async def stream(self, message: list, mcp_config: dict, client_id: str):
         logger.info(f"Starting LLM stream for messages: {message}")
         logger.info(f"MCP Config: {mcp_config}")
-
+        memory = MemorySaver()
         try:
             # MCP 기능을 일시적으로 비활성화하고 기본 LLM만 사용
             # logger.info("MCP 기능을 비활성화하고 기본 LLM만 사용합니다.")
@@ -182,11 +182,20 @@ class ChatWaifu_LLM(object):
             agent = create_react_agent(
                 self.llm,
                 tools=tools,
+                checkpointer=memory,
             )
+            config = {"configurable": {"thread_id": client_id}}
             # stream 메서드는 process_message 라는 비동기 제너레이터를 반환합니다.
-            async for item in self.process_message(messages=message, agent=agent):
+            async for item in self.process_message(
+                messages=message, agent=agent, config=config
+            ):
                 yield item
 
+            yield {
+                "type": "end",
+                "message": "LLM stream completed successfully.",
+                "message_history": agent.get_state(config=config).values["messages"],
+            }
         except Exception as e:
             logger.error(f"Error in stream method: {e}")
             import traceback
