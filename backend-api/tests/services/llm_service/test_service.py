@@ -30,9 +30,10 @@ class DummyChunk(SimpleNamespace):
 
 
 class DummyToolChunk(AIMessageChunk):
-    def __init__(self, chunks, name, args):
-        # mimic AIMessageChunk
-        super().__init__(content=None, additional_kwargs={"tool_calls": True})
+    def __init__(self, chunks, name, args, **kwargs):
+        # AIDEV-NOTE: Accept additional kwargs to handle LangChain's AIMessageChunk addition behavior
+        # Accept any additional kwargs that LangChain might pass during addition
+        super().__init__(content="", additional_kwargs={"tool_calls": True}, **kwargs)
         self.tool_call_chunks = [{"name": name, "args": args}]
         self._chunks = chunks
 
@@ -72,14 +73,12 @@ async def test_process_message_buffer_flush_at_end():
 
 async def test_process_message_tool_call():
     """Yield a tool_call dict when AIMessageChunk contains tool_call_chunks."""
-    # simulate two chunks to assemble a complete tool call
-    tool_chunk1 = DummyToolChunk(chunks=["a"], name="mytool", args="{arg:1}")
-    tool_chunk2 = DummyToolChunk(chunks=["b"], name="mytool", args="{arg:1}")
-    # first yield not complete, second yields and triggers
+    # simulate a complete tool call in a single chunk
+    tool_chunk = DummyToolChunk(chunks=["complete"], name="mytool", args='{"arg": 1}')
+    # single complete tool call
     agent = DummyAgent(
         [
-            (tool_chunk1, {"langgraph_node": "n3"}),
-            (tool_chunk2, {"langgraph_node": "n3"}),
+            (tool_chunk, {"langgraph_node": "n3"}),
         ]
     )
     llm = ChatWaifu_LLM(llm=SimpleNamespace(model_name="m"))
@@ -136,13 +135,16 @@ async def test_stream_method_with_end_and_state(monkeypatch):
         "src.services.llm_service.service.create_react_agent",
         lambda llm, tools, checkpointer: StubAgent(),
     )
+
+    # AIDEV-NOTE: Mock process_message as async generator, not regular iterator
     # stub process_message to yield one content
+    async def mock_process_message(self, messages, agent, config):
+        yield {"type": "content", "text": "hi", "node": None}
+
     monkeypatch.setattr(
         ChatWaifu_LLM,
         "process_message",
-        lambda self, messages, agent, config: iter(
-            [{"type": "content", "text": "hi", "node": None}]
-        ),
+        mock_process_message,
     )
     llm = ChatWaifu_LLM(llm=SimpleNamespace(model_name="m"))
     results = []

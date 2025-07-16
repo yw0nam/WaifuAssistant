@@ -1,11 +1,13 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
-# TODO: pydantic v2로 변경 시 ConfigDict로 변경 필요
+# AIDEV-NOTE: Updated to use ConfigDict for Pydantic v2 compatibility
 # https://docs.pydantic.dev/latest/usage/configuration/#configdict
 
 
 class LLMSettings(BaseModel):
     """LLM 관련 설정"""
+
+    model_config = ConfigDict(env_prefix="LLM_")
 
     openai_api_key: str
     model: str
@@ -14,31 +16,28 @@ class LLMSettings(BaseModel):
     top_p: float
     max_tokens: int
 
-    class Config:
-        env_prefix = "LLM_"  # 환경변수 prefix
-
 
 class MCPSettings(BaseModel):
     """MCP 관련 설정"""
 
-    mcp_servers: dict = Field(default_factory=dict)
+    model_config = ConfigDict(env_prefix="MCP_")
 
-    class Config:
-        env_prefix = "MCP_"
+    mcp_servers: dict = Field(default_factory=dict)
 
 
 class TTSSettings(BaseModel):
     """TTS 관련 설정"""
 
+    model_config = ConfigDict(env_prefix="TTS_")
+
     api_key: str = Field(default="")
     url: str = Field(default="http://localhost:8080/v1/tts")
-
-    class Config:
-        env_prefix = "TTS_"
 
 
 class ASRSettings(BaseModel):
     """ASR 관련 설정"""
+
+    model_config = ConfigDict(env_prefix="ASR_")
 
     api_key: str = Field(default="EMPTY")
     api_base: str = Field(default="http://localhost:8000/v1")
@@ -47,17 +46,13 @@ class ASRSettings(BaseModel):
     temperature: float = Field(default=0.0)
     response_format: str = Field(default="json")
 
-    class Config:
-        env_prefix = "ASR_"
-
 
 class AppConfig(BaseModel):
     """전체 애플리케이션 설정"""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     llm_configs: LLMSettings
     tts_configs: TTSSettings
     asr_configs: ASRSettings
     mcp_configs: MCPSettings
-
-    class Config:
-        arbitrary_types_allowed = True

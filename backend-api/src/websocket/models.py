@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class MessageType(str, Enum):
@@ -28,8 +28,8 @@ class ChatRequest(BaseModel):
     reasoning_start_tag: str = Field(default="<think>", description="추론 시작 태그")
     reasoning_end_tag: str = Field(default="</think>", description="추론 종료 태그")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "examples": [
                 {
                     "type": "chat",
@@ -47,6 +47,7 @@ class ChatRequest(BaseModel):
                 },
             ]
         }
+    )
 
 
 class PingRequest(BaseModel):
@@ -84,8 +85,8 @@ class ASRTranscribeRequest(BaseModel):
     )
     streaming: bool = Field(default=False, description="스트리밍 전사 여부")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "examples": [
                 {
                     "type": "asr_transcribe",
@@ -103,6 +104,7 @@ class ASRTranscribeRequest(BaseModel):
                 },
             ]
         }
+    )
 
 
 class ResponseType(str, Enum):
