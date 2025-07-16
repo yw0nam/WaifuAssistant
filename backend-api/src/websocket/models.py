@@ -10,6 +10,7 @@ class MessageType(str, Enum):
     CHAT = "chat"
     PING = "ping"
     TTS_INTERRUPT = "tts_interrupt"
+    ASR_TRANSCRIBE = "asr_transcribe"  # AIDEV-NOTE: Audio transcription request
 
 
 class ChatRequest(BaseModel):
@@ -66,6 +67,44 @@ class TTSInterruptRequest(BaseModel):
     reason: Optional[str] = Field(default="user_interrupt", description="중단 이유")
 
 
+class ASRTranscribeRequest(BaseModel):
+    """ASR 음성 인식 요청"""
+
+    type: MessageType = Field(
+        default=MessageType.ASR_TRANSCRIBE, description="메시지 타입"
+    )
+    audio_data: str = Field(..., description="Base64 인코딩된 오디오 데이터")
+    format: str = Field(default="wav", description="오디오 포맷 (wav, mp3, m4a 등)")
+    language: Optional[str] = Field(
+        default=None, description="음성 언어 코드 (ko, en, auto 등)"
+    )
+    temperature: Optional[float] = Field(default=None, description="샘플링 온도")
+    response_format: Optional[str] = Field(
+        default=None, description="응답 포맷 (json, text 등)"
+    )
+    streaming: bool = Field(default=False, description="스트리밍 전사 여부")
+
+    class Config:
+        json_schema_extra = {
+            "examples": [
+                {
+                    "type": "asr_transcribe",
+                    "audio_data": "UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=",
+                    "format": "wav",
+                    "language": "ko",
+                    "streaming": False,
+                },
+                {
+                    "type": "asr_transcribe",
+                    "audio_data": "UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=",
+                    "format": "mp3",
+                    "language": "auto",
+                    "streaming": True,
+                },
+            ]
+        }
+
+
 class ResponseType(str, Enum):
     """응답 타입 열거형"""
 
@@ -76,6 +115,8 @@ class ResponseType(str, Enum):
     AUDIO = "audio"
     TTS_INTERRUPTED = "tts_interrupted"
     STREAMING_TTS = "streaming_tts"  # New: For real-time TTS sentences
+    ASR_RESULT = "asr_result"  # AIDEV-NOTE: ASR transcription result
+    ASR_STREAMING = "asr_streaming"  # AIDEV-NOTE: ASR streaming chunk
 
 
 class ContentResponse(BaseModel):
@@ -141,8 +182,28 @@ class StreamingTTSResponse(BaseModel):
     sentence: str = Field(..., description="TTS로 변환될 완성된 문장")
 
 
+class ASRResultResponse(BaseModel):
+    """ASR 음성 인식 결과 응답"""
+
+    type: ResponseType = Field(default=ResponseType.ASR_RESULT)
+    text: str = Field(..., description="전사된 텍스트")
+    language: Optional[str] = Field(default=None, description="감지된 언어")
+    confidence: Optional[float] = Field(default=None, description="신뢰도 점수")
+    processing_time: Optional[float] = Field(default=None, description="처리 시간(초)")
+
+
+class ASRStreamingResponse(BaseModel):
+    """ASR 스트리밍 전사 응답"""
+
+    type: ResponseType = Field(default=ResponseType.ASR_STREAMING)
+    text: str = Field(..., description="실시간 전사 텍스트 청크")
+    is_final: bool = Field(default=False, description="최종 결과 여부")
+
+
 # Union 타입들
-WebSocketRequest = Union[ChatRequest, PingRequest, TTSInterruptRequest]
+WebSocketRequest = Union[
+    ChatRequest, PingRequest, TTSInterruptRequest, ASRTranscribeRequest
+]
 WebSocketResponse = Union[
     ContentResponse,
     AudioResponse,
@@ -151,4 +212,6 @@ WebSocketResponse = Union[
     PongResponse,
     TTSInterruptedResponse,
     StreamingTTSResponse,
+    ASRResultResponse,
+    ASRStreamingResponse,
 ]

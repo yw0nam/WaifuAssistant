@@ -20,7 +20,8 @@ from src.services.tts_service.tts_worker import (
     tts_worker,
 )
 
-from ..models import ChatRequest, PingRequest, TTSInterruptRequest
+from ..models import ASRTranscribeRequest, ChatRequest, PingRequest, TTSInterruptRequest
+from .asr_handler import asr_handler
 from .chat_handler import handle_chat_request
 from .error_handler import send_error_response
 from .message_parser import parse_websocket_message
@@ -121,6 +122,10 @@ async def handle_websocket(
                         await handle_tts_interrupt_request(
                             websocket, client_id, request
                         )
+                    elif isinstance(request, ASRTranscribeRequest):
+                        # AIDEV-NOTE: Handle ASR transcription requests
+                        logger.info(f"🎤 Client #{client_id} ASR transcription request")
+                        await handle_asr_request(websocket, client_id, request)
                     else:
                         # Unsupported request type
                         await send_error_response(
@@ -183,3 +188,33 @@ async def handle_websocket(
                 logger.error(f"TTS task cancellation error: {cancel_error}")
 
         logger.info(f"✅ Client #{client_id} cleanup completed")
+
+
+async def handle_asr_request(
+    websocket: WebSocket, client_id: str, request: ASRTranscribeRequest
+) -> None:
+    """
+    ASR 전사 요청 처리
+
+    Args:
+        websocket: WebSocket connection
+        client_id: Client identifier
+        request: ASR transcription request
+    """
+    try:
+        logger.info(f"🎤 Client #{client_id} starting ASR transcription")
+
+        # ASR 핸들러를 사용하여 전사 처리
+        async for response_data in asr_handler.handle_transcribe_request(request):
+            await websocket.send_text(response_data)
+            logger.debug(f"📤 Client #{client_id} ASR response sent")
+
+        logger.info(f"✅ Client #{client_id} ASR transcription completed")
+
+    except Exception as e:
+        logger.error(f"❌ Client #{client_id} ASR processing error: {e}")
+        await send_error_response(
+            websocket,
+            f"ASR processing failed: {str(e)}",
+            error_code="ASR_PROCESSING_ERROR",
+        )
