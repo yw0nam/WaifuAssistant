@@ -4,7 +4,7 @@ import pytest
 import requests
 
 from src.configs.loader import load_config
-from src.services.tts_service.service import (
+from src.services.tts.service import (
     ChatWaifu_TTS,
     ServeReferenceAudio,
     ServeTTSRequest,

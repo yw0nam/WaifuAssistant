@@ -10,15 +10,15 @@ import time
 
 # AIDEV-NOTE: Run E2E tests sequentially to prevent ASR service overload
 E2E_TESTS = [
-    "services/asr_service/test_asr_service.py::test_asr_service_e2e_real_api",
-    "services/asr_service/test_asr_service.py::test_asr_service_e2e_different_languages",
-    "services/asr_service/test_asr_service.py::test_asr_service_e2e_error_handling",
-    "services/llm_service/test_llm_service.py::test_llm_service_e2e_real_api",
-    "services/llm_service/test_llm_service.py::test_llm_service_e2e_with_mcp",
-    "services/llm_service/test_llm_service.py::test_llm_service_e2e_error_handling",
-    "services/tts_service/test_tts_service.py::test_tts_service_e2e_real_api",
-    "services/tts_service/test_tts_service.py::test_tts_service_e2e_with_reference_id",
-    "services/tts_service/test_tts_service.py::test_tts_service_e2e_error_handling",
+    "services/asr/test_asr_service.py::test_asr_service_e2e_real_api",
+    "services/asr/test_asr_service.py::test_asr_service_e2e_different_languages",
+    "services/asr/test_asr_service.py::test_asr_service_e2e_error_handling",
+    "services/llm/test_llm_service.py::test_llm_service_e2e_real_api",
+    "services/llm/test_llm_service.py::test_llm_service_e2e_with_mcp",
+    "services/llm/test_llm_service.py::test_llm_service_e2e_error_handling",
+    "services/tts/test_tts_service.py::test_tts_service_e2e_real_api",
+    "services/tts/test_tts_service.py::test_tts_service_e2e_with_reference_id",
+    "services/tts/test_tts_service.py::test_tts_service_e2e_error_handling",
 ]
 
 DELAY_BETWEEN_TESTS = 2.0  # 2 seconds between tests
@@ -26,9 +26,9 @@ DELAY_BETWEEN_TESTS = 2.0  # 2 seconds between tests
 
 def run_test(test_path):
     """Run a single test and return the result."""
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Running: {test_path}")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
 
     cmd = ["uv", "run", "pytest", test_path, "-v", "-s"]
     try:
@@ -47,7 +47,7 @@ def main():
     failed = []
 
     for i, test in enumerate(E2E_TESTS):
-        print(f"\nProgress: {i+1}/{len(E2E_TESTS)}")
+        print(f"\nProgress: {i + 1}/{len(E2E_TESTS)}")
 
         success = run_test(test)
 
@@ -64,9 +64,9 @@ def main():
             time.sleep(DELAY_BETWEEN_TESTS)
 
     # Summary
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("FINAL RESULTS")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(f"✅ Passed: {len(passed)}")
     print(f"❌ Failed: {len(failed)}")
 
