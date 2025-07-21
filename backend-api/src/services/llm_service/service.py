@@ -160,21 +160,15 @@ class ChatWaifu_LLM(object):
         logger.info(f"MCP Config: {mcp_config}")
         memory = MemorySaver()
         try:
-            # MCP 기능을 일시적으로 비활성화하고 기본 LLM만 사용
-            # logger.info("MCP 기능을 비활성화하고 기본 LLM만 사용합니다.")
-
-            # # 빈 도구 목록으로 에이전트 생성
-            # logger.debug("Creating react agent with no tools.")
-            # agent = create_react_agent(
-            #     self.llm,
-            #     tools=[],  # 빈 도구 목록
-            # )
-            client = MultiServerMCPClient(mcp_config["mcp_servers"])
-
-            tools = await client.get_tools()
-            logger.info(
-                f"Fetched {len(tools)} tools from MCP client: {[tool.name for tool in tools]}"
-            )
+            if mcp_config.get("mcp_servers"):
+                client = MultiServerMCPClient(mcp_config["mcp_servers"])
+                tools = await client.get_tools()
+                logger.info(
+                    f"Fetched {len(tools)} tools from MCP client: {[tool.name for tool in tools]}"
+                )
+            else:
+                logger.info("Empty MCP servers configuration, using default LLM only.")
+                tools = []
 
             logger.debug("Creating react agent.")
             agent = create_react_agent(

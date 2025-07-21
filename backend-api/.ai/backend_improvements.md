@@ -26,9 +26,15 @@ This document tracks the step-by-step improvements for the backend API.
     - [ ] Document the WebSocket endpoint and message schemas.
 
 - [ ] **6. Add New feature**
-    - ✅ Add ASR service
-    - [ ] Speech Detection, If user keep telling something, AI should keep listening until the speech end. And, user speech detection, when AI speech, AI should be stop talking. 
-    - [ ] Active speech(Not only waiting user input, saying something them selves)
-    - [ ] Add Memory system. Short-term, Long-term, Working-Memory.
-    - [ ] Add Agent2Agent feature.
-    - [ ] Get mcp config from frontend, not static config.
+    - Core Interaction & Memory
+        - [ ] ASR Service Integration: Add an Automatic Speech Recognition service to process user voice input.
+        - [ ] Advanced Speech Detection: VAD (Voice Activity Detection): AI keeps listening until the user finishes speaking.Barge-in: AI stops talking immediately when the user starts speaking.
+        - [ ] Proactive Interaction: The AI initiates conversation or makes comments without waiting for user input (e.g., based on time of day).
+        - [ ] Comprehensive Memory System: Implement Short-term, Long-term, and Working-Memory for context-aware and personalized conversations.
+        - [ ] Agent-to-Agent Communication: Enable the main agent to consult with other specialized agents for complex tasks.
+        - [ ] Dynamic Configuration: Allow the frontend to send and update MCP (Multi-Server MCP Client) configurations dynamically.  
+    - New Expressiveness & Utility Features
+        - [ ] Emotion-Driven Animation: Connect extracted emotion tags (e.g., (curious), (shy)) directly to Live2D animations for a more expressive and lively character.
+        - [ ] Screen Awareness (Vision): Allow the agent to perceive the user's screen content and react to it, such as commenting on a browsed website or an active game.
+        - [ ] Dynamic Personality & Mood System: Implement a system where the agent's mood and tone shift based on the flow of the conversation, making it feel more alive and less robotic.
+        - [ ] Desktop Automation Assistant: Use tool integration (LangGraph) to perform simple desktop tasks via voice commands like "Play music," "Set an alarm," or "Find the latest news."

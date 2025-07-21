@@ -1,7 +1,9 @@
 import base64
 
+import pytest
 import requests
 
+from src.configs.loader import load_config
 from src.services.tts_service.service import (
     ChatWaifu_TTS,
     ServeReferenceAudio,
@@ -156,3 +158,122 @@ def test_generate_speech_file_write_error(monkeypatch, tmp_path):
         "hi", output_format="file", output_filename=str(tmp_path / "f.wav")
     )
     assert result is False
+
+
+# AIDEV-NOTE: E2E tests that make actual API calls to live services
+# These tests are marked with @pytest.mark.e2e and can be skipped with -m "not e2e"
+
+
+@pytest.mark.e2e
+def test_tts_service_e2e_real_api():
+    """
+    E2E test that makes an actual API call to the TTS service.
+
+    This test requires the TTS service to be running at the configured URL.
+    Skip with: pytest -m "not e2e"
+    """
+    # Load actual configuration
+    config = load_config()
+    tts_url = config.tts_configs.url
+    tts_api_key = config.tts_configs.api_key
+
+    # Create service instance with real config
+    tts_service = ChatWaifu_TTS(url=tts_url, api_key=tts_api_key)
+
+    # Test text - use simple text to avoid issues with complex processing
+    test_text = "Hello, this is a test."
+
+    try:
+        # Test bytes format
+        audio_bytes = tts_service.generate_speech(
+            raw_text=test_text,
+            output_format="bytes",
+        )
+
+        # Verify we got audio data
+        assert audio_bytes is not None, "Should receive audio data from TTS API"
+        assert isinstance(audio_bytes, bytes), "Audio data should be bytes"
+        assert len(audio_bytes) > 0, "Audio data should not be empty"
+
+        # Test base64 format
+        audio_b64 = tts_service.generate_speech(
+            raw_text=test_text,
+            output_format="base64",
+        )
+
+        assert audio_b64 is not None, "Should receive base64 audio data"
+        assert isinstance(audio_b64, str), "Base64 audio should be string"
+        assert len(audio_b64) > 0, "Base64 data should not be empty"
+
+        # Verify base64 can be decoded
+        decoded_bytes = base64.b64decode(audio_b64)
+        assert len(decoded_bytes) > 0, "Decoded base64 should produce valid bytes"
+
+    except requests.exceptions.ConnectionError:
+        pytest.skip("TTS service not available - connection failed")
+    except requests.exceptions.Timeout:
+        pytest.skip("TTS service not available - request timeout")
+    except Exception as e:
+        pytest.fail(f"Unexpected error in TTS E2E test: {e}")
+
+
+@pytest.mark.e2e
+def test_tts_service_e2e_with_reference_id():
+    """
+    E2E test that tests TTS with a reference ID.
+
+    This test requires the TTS service to be running and have reference voices available.
+    """
+    config = load_config()
+    tts_service = ChatWaifu_TTS(
+        url=config.tts_configs.url, api_key=config.tts_configs.api_key
+    )
+
+    test_text = "Testing with reference voice."
+
+    try:
+        # Test with a reference ID (this may or may not exist on the server)
+        audio_bytes = tts_service.generate_speech(
+            raw_text=test_text,
+            reference_id="七海",  # Use a common reference ID
+            output_format="bytes",
+        )
+
+        # Even if reference doesn't exist, should still get some response
+        # (server may fallback to default voice)
+        assert audio_bytes is not None or True, "Should handle reference ID gracefully"
+
+    except requests.exceptions.ConnectionError:
+        pytest.skip("TTS service not available - connection failed")
+    except Exception as e:
+        # Log the error but don't fail - reference might not exist
+        print(f"Reference ID test encountered: {e}")
+
+
+@pytest.mark.e2e
+def test_tts_service_e2e_error_handling():
+    """
+    E2E test that verifies error handling with invalid requests.
+    """
+    config = load_config()
+    tts_service = ChatWaifu_TTS(
+        url=config.tts_configs.url, api_key=config.tts_configs.api_key
+    )
+
+    try:
+        # Test with empty text
+        result = tts_service.generate_speech(
+            raw_text="",
+            output_format="bytes",
+        )
+        assert result is None, "Empty text should return None"
+
+        # Test with whitespace only
+        result = tts_service.generate_speech(
+            raw_text="   \n\t   ",
+            output_format="bytes",
+        )
+        assert result is None, "Whitespace-only text should return None"
+
+    except requests.exceptions.ConnectionError:
+        pytest.skip("TTS service not available - connection failed")

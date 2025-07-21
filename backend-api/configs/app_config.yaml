@@ -11,8 +11,8 @@ tts_configs:
   "api_base": "http://localhost:8080/v1"
 
 asr_configs:
-  "api_key": "EMPTY"
-  "api_base": "http://localhost:8000/v1"
+  "api_key": "token-abc123"
+  "api_base": "http://localhost:5500/v1"
   "model": "openai/whisper-large-v3"
   "language": "ko"
   "temperature": 0.0

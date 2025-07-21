@@ -62,6 +62,15 @@ addopts = [
     "-v",
     "--tb=short",
 ]
+markers = [
+    "e2e: marks tests as end-to-end integration tests (deselect with '-m \"not e2e\"')",
+    "e2e_sequential: marks E2E tests that must run sequentially to prevent service overload",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+    "ignore::pytest.PytestUnraisableExceptionWarning",
+]
 
 [tool.black]
 line-length = 88

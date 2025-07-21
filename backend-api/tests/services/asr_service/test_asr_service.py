@@ -644,3 +644,265 @@ class TestASRService:
 
             for audio_file in audio_files:
                 os.unlink(audio_file)
+
+
+# AIDEV-NOTE: E2E tests for ASR service that make actual API calls
+# These tests require the ASR service to be running at the configured URL
+
+
+@pytest.mark.e2e
+@pytest.mark.asyncio
+async def test_asr_service_e2e_real_api():
+    """
+    E2E test that makes an actual API call to the ASR service.
+
+    This test requires the ASR service to be running at the configured URL.
+    Skip with: pytest -m "not e2e"
+    """
+    from src.configs.loader import load_config
+    import os
+    import asyncio
+
+    # Load actual configuration
+    config = load_config()
+
+    english_config = ASRSettings(
+        api_key=config.asr_configs.api_key,
+        api_base=config.asr_configs.api_base,
+        model=config.asr_configs.model,
+        language="en",  # English
+        temperature=0.0,
+        response_format="json",
+    )
+    asr_service = ASRService(english_config)
+
+    # Use actual test audio file instead of dummy
+    test_audio_dir = os.path.join(
+        os.path.dirname(__file__), "..", "..", "test_files", "audio"
+    )
+    audio_file = os.path.join(test_audio_dir, "en_audio.wav")
+
+    # Check if test file exists
+    if not os.path.exists(audio_file):
+        pytest.skip(f"Test audio file not found: {audio_file}")
+
+    try:
+        # AIDEV-NOTE: E2E test waits for complete ASR response without early abort
+        # Remove artificial delays - wait for actual API response completion
+        print("Starting English ASR transcription...")
+
+        # Test actual transcription with real audio - wait for complete response
+        result = await asr_service.transcribe_async(audio_file)
+
+        # AIDEV-NOTE: Ensure we got a complete response, not a partial/aborted one
+        assert (
+            result is not None
+        ), "ASR API returned None - request was aborted or failed"
+        assert isinstance(
+            result, str
+        ), f"ASR API returned invalid type {type(result)}, expected string"
+        assert (
+            len(result.strip()) > 0
+        ), "ASR API returned empty string - transcription incomplete"
+        assert (
+            len(result.strip()) >= 5
+        ), f"ASR transcription too short ('{result}') - likely incomplete"
+
+        print(f"✅ ASR E2E received complete response: '{result}'")
+
+        # Since we know the expected content, validate it's meaningful
+        result_lower = result.lower()
+        expected_words = ["borrowers", "floorboards", "beneath", "dozens"]
+        found_words = [word for word in expected_words if word in result_lower]
+
+        if found_words:
+            print(f"✅ Found expected words {found_words} in transcription")
+        else:
+            print(f"⚠️  Transcription may vary from expected: {result}")
+            # Don't fail here - ASR might have variations but still be complete
+
+        print(f"Full ASR transcription result: '{result}'")
+
+    except Exception as e:
+        if "Connection refused" in str(e):  # 서비스가 아예 안 켜져 있을 때만 skip
+            pytest.skip(f"ASR service not available: {e}")
+        else:  # 500 에러 등 예상치 못한 에러는 테스트 실패로 처리
+            pytest.fail(f"Unexpected error in ASR E2E test: {e}")
+    finally:
+        # AIDEV-NOTE: Ensure proper cleanup to prevent connection issues
+        try:
+            await asr_service.aclose()
+        except:
+            pass
+
+
+@pytest.mark.e2e
+@pytest.mark.asyncio
+async def test_asr_service_e2e_different_languages():
+    """
+    E2E test that tests ASR with different language settings using Japanese audio.
+    """
+    from src.configs.loader import load_config
+    import os
+
+    config = load_config()
+
+    # Test with Japanese language setting using actual Japanese audio
+    japanese_config = ASRSettings(
+        api_key=config.asr_configs.api_key,
+        api_base=config.asr_configs.api_base,
+        model=config.asr_configs.model,
+        language="ja",  # Japanese
+        temperature=0.0,
+        response_format="json",
+    )
+
+    asr_service = ASRService(japanese_config)
+
+    # Use actual Japanese test audio file
+    test_audio_dir = os.path.join(
+        os.path.dirname(__file__), "..", "..", "test_files", "audio"
+    )
+    audio_file = os.path.join(test_audio_dir, "jp_audio.wav")
+
+    # Check if test file exists
+    if not os.path.exists(audio_file):
+        pytest.skip(f"Japanese test audio file not found: {audio_file}")
+    try:
+        # AIDEV-NOTE: E2E test for Japanese audio - no early abort, wait for full transcription
+        print("Starting Japanese ASR transcription...")
+
+        result = await asr_service.transcribe_async(audio_file)
+        # Should get a result regardless of language setting
+        assert result is not None, "Should handle Japanese language setting"
+        assert isinstance(result, str), "Result should be a string"
+        assert len(result.strip()) > 0, "Transcription should not be empty"
+
+        # Expected Japanese text: "男性とはこういうものですからね、撫子様"
+        # Check for Japanese characters or known words
+        japanese_words = ["男性", "撫子", "こういう", "ものです"]
+        found_japanese = [word for word in japanese_words if word in result]
+        has_japanese_chars = any(ord(char) > 127 for char in result)
+
+        if found_japanese:
+            print(f"✅ Found expected Japanese words {found_japanese}")
+        elif has_japanese_chars:
+            print(f"✅ Found Japanese characters in transcription")
+        else:
+            print(f"⚠️  Japanese transcription may be romanized: {result}")
+
+        print(f"Full Japanese ASR transcription: '{result}'")
+
+    except Exception as e:
+        if "Connection refused" in str(e):  # 서비스가 아예 안 켜져 있을 때만 skip
+            pytest.skip(f"ASR service not available: {e}")
+        else:  # 500 에러 등 예상치 못한 에러는 테스트 실패로 처리
+            pytest.fail(f"Unexpected error in ASR E2E test: {e}")
+    finally:
+        # AIDEV-NOTE: Ensure proper cleanup to prevent connection issues
+        try:
+            await asr_service.aclose()
+        except:
+            pass
+
+
+@pytest.mark.e2e
+@pytest.mark.asyncio
+async def test_asr_service_e2e_error_handling():
+    """
+    E2E test that verifies error handling with invalid audio files.
+    """
+    from src.configs.loader import load_config
+    import tempfile
+    import os
+
+    config = load_config()
+    asr_service = ASRService(config.asr_configs)
+
+    try:
+        # AIDEV-NOTE: E2E error handling - test complete error responses, no early abort
+        # Remove artificial delays - focus on getting complete responses
+        print("Starting ASR error handling tests...")
+
+        # Test with non-existent file (should fail but get complete error response)
+        print("Testing non-existent file...")
+        try:
+            result = await asr_service.transcribe_async("/non/existent/file.wav")
+            raise AssertionError(
+                "Should have raised an exception for non-existent file"
+            )
+        except Exception as e:
+            # Expected to fail - ensure we got a complete error response
+            print(
+                f"✅ Got complete error for non-existent file: {type(e).__name__}: {e}"
+            )
+            error_msg = str(e).lower()
+            if not any(
+                keyword in error_msg
+                for keyword in [
+                    "file",
+                    "path",
+                    "not found",
+                    "no such file",
+                    "404",
+                    "500",
+                ]
+            ):
+                raise AssertionError(f"Error message doesn't indicate file issue: {e}")
+
+        # Test with invalid file content (wait for complete processing)
+        print("Testing invalid audio file...")
+        invalid_file = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
+        invalid_file.write(b"This is not valid audio data at all - just plain text")
+        invalid_file.close()
+
+        try:
+            result = await asr_service.transcribe_async(invalid_file.name)
+            # Some ASR services might return empty/error message rather than exception
+            print(f"Invalid audio file result: {result}")
+
+            # If we get a result, validate it's a proper response (not incomplete)
+            if result is not None:
+                if not isinstance(result, str):
+                    raise AssertionError(
+                        f"Invalid audio test returned non-string: {type(result)}"
+                    )
+                print(f"✅ Service handled invalid file gracefully: '{result}'")
+            else:
+                raise AssertionError(
+                    "Invalid audio test returned None - response incomplete"
+                )
+
+        except Exception as e:
+            # Expected to fail with invalid audio - ensure complete error
+            print(f"✅ Got complete error with invalid audio: {type(e).__name__}: {e}")
+            error_msg = str(e).lower()
+            if not any(
+                keyword in error_msg
+                for keyword in [
+                    "audio",
+                    "format",
+                    "decode",
+                    "invalid",
+                    "corrupt",
+                    "500",
+                    "bad request",
+                ]
+            ):
+                raise AssertionError(f"Error doesn't indicate audio format issue: {e}")
+        finally:
+            os.unlink(invalid_file.name)
+
+        print("✅ ASR error handling E2E test completed successfully")
+
+    except Exception as e:
+        if "Connection refused" in str(e):  # 서비스가 아예 안 켜져 있을 때만 skip
+            pytest.skip(f"ASR service not available: {e}")
+        else:  # 500 에러 등 예상치 못한 에러는 테스트 실패로 처리
+            pytest.fail(f"Unexpected error in ASR E2E test: {e}")
+    finally:
+        # AIDEV-NOTE: Ensure proper cleanup to prevent connection issues
+        try:
+            await asr_service.aclose()
+        except:
+            pass
