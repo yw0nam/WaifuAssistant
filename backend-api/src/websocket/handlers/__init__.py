@@ -5,6 +5,7 @@ This package provides modular WebSocket request handlers for the Waifu Assistant
 Each handler is responsible for a specific type of WebSocket message or functionality.
 """
 
+from .asr_handler import asr_handler
 from .chat_handler import handle_chat_request
 from .connection_manager import handle_websocket
 from .error_handler import send_error_response
@@ -19,4 +20,5 @@ __all__ = [
     "handle_tts_interrupt_request",
     "handle_chat_request",
     "handle_websocket",
+    "asr_handler",
 ]

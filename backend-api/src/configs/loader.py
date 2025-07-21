@@ -5,7 +5,7 @@ from typing import Optional
 
 import yaml
 
-from .models import AppConfig, LLMSettings, MCPSettings, TTSSettings
+from .models import AppConfig, ASRSettings, LLMSettings, MCPSettings, TTSSettings
 
 # 설정 파일 경로 정의
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -42,6 +42,14 @@ def merge_env_variables(config_data: dict) -> dict:
     if tts_key := os.getenv("TTS_API_KEY"):
         config_data.setdefault("tts_configs", {})["api_key"] = tts_key
 
+    # ASR API Key 환경변수 처리
+    if asr_key := os.getenv("ASR_API_KEY"):
+        config_data.setdefault("asr_configs", {})["api_key"] = asr_key
+
+    # ASR API Base 환경변수 처리
+    if asr_base := os.getenv("ASR_API_BASE"):
+        config_data.setdefault("asr_configs", {})["api_base"] = asr_base
+
     return config_data
 
 
@@ -74,6 +82,7 @@ def load_config(
         return AppConfig(
             llm_configs=LLMSettings(**config_data["llm_configs"]),
             tts_configs=TTSSettings(**config_data["tts_configs"]),
+            asr_configs=ASRSettings(**config_data["asr_configs"]),
             mcp_configs=MCPSettings(mcp_servers=mcp_data),
         )
 
@@ -92,6 +101,10 @@ def validate_config(config: AppConfig) -> None:
     # TTS URL 검증
     if not config.tts_configs.url:
         raise ValueError("TTS URL이 설정되지 않았습니다.")
+
+    # ASR API Base 검증
+    if not config.asr_configs.api_base:
+        raise ValueError("ASR API Base가 설정되지 않았습니다.")
 
     print("✅ 설정 검증 완료")
 

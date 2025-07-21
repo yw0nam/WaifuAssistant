@@ -3,7 +3,7 @@ from typing import Literal, Optional
 
 import ormsgpack
 import requests
-from pydantic import BaseModel, Field, conint, model_validator
+from pydantic import BaseModel, ConfigDict, Field, conint, model_validator
 from typing_extensions import Annotated
 
 from src.core.logging import setup_logging
@@ -49,9 +49,8 @@ class ServeTTSRequest(BaseModel):
     repetition_penalty: Annotated[float, Field(ge=0.9, le=2.0, strict=True)] = 1.1
     temperature: Annotated[float, Field(ge=0.1, le=1.0, strict=True)] = 0.8
 
-    class Config:
-        # Allow arbitrary types for pytorch related types
-        arbitrary_types_allowed = True
+    # AIDEV-NOTE: Migrated from class Config to ConfigDict for Pydantic v2 compatibility
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
 
 class ChatWaifu_TTS:

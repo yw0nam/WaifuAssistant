@@ -24,7 +24,7 @@ class TextChunkProcessor:
         self._sentence_boundaries = re.compile(r"(?<=[.!?。！？\n])\s*")
 
         self._tool_call_pattern = re.compile(
-            r"\{\s*\'type\'\s*:\s*\'tool_call\'[\s\S]*\}\}\}"
+            r"\{\s*\'type\'\s*:\s*\'tool_call\'[\s\S]*?\}\}"
         )
 
         logger.debug(
@@ -60,8 +60,14 @@ class TextChunkProcessor:
 
         self._buffer = self._tool_call_pattern.sub("", self._buffer)
 
+        if not self._sentence_boundaries.search(self._buffer):
+            return []
+
         sentences = self._sentence_boundaries.split(self._buffer)
-        self._buffer = sentences.pop()
+
+        # 마지막 요소가 문장의 일부일 수 있으므로 버퍼에 남김
+        # 문장 경계 문자 뒤에 공백만 있는 경우, split 결과 마지막이 공백 문자열이 될 수 있음
+        self._buffer = sentences.pop() if sentences[-1].strip() else ""
 
         complete_sentences = [s.strip() for s in sentences if s and s.strip()]
 

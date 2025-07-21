@@ -10,12 +10,18 @@ from typing import Union
 
 from pydantic import ValidationError
 
-from ..models import ChatRequest, MessageType, PingRequest, TTSInterruptRequest
+from ..models import (
+    ASRTranscribeRequest,
+    ChatRequest,
+    MessageType,
+    PingRequest,
+    TTSInterruptRequest,
+)
 
 
 async def parse_websocket_message(
     raw_data: str,
-) -> Union[ChatRequest, PingRequest, TTSInterruptRequest]:
+) -> Union[ChatRequest, PingRequest, TTSInterruptRequest, ASRTranscribeRequest]:
     """
     WebSocket 메시지 파싱 및 검증
 
@@ -40,6 +46,9 @@ async def parse_websocket_message(
                 return PingRequest(**data)
             elif message_type == MessageType.TTS_INTERRUPT:
                 return TTSInterruptRequest(**data)
+            elif message_type == MessageType.ASR_TRANSCRIBE:
+                # AIDEV-NOTE: Handle ASR transcription requests
+                return ASRTranscribeRequest(**data)
             else:
                 # 기본값으로 ChatRequest 처리
                 return ChatRequest(text=data.get("text", ""), **data)
