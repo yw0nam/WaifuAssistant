@@ -12,21 +12,14 @@ from fastapi import WebSocket, WebSocketDisconnect
 from langchain_core.messages import SystemMessage
 
 from src.core.logging import setup_logging
-from src.services.llm_service.service import ChatWaifu_LLM
-from src.services.tts_service.service import ChatWaifu_TTS
-from src.services.tts_service.tts_worker import (
-    cleanup_tts_queue,
-    interrupt_tts,
-    tts_worker,
-)
 
 from ..models import ASRTranscribeRequest, ChatRequest, PingRequest, TTSInterruptRequest
-from .asr_handler import asr_handler
-from .chat_handler import handle_chat_request
+from .asr_handler import ASRHandler
+from .chat_handler import ChatHandler
 from .error_handler import send_error_response
 from .message_parser import parse_websocket_message
 from .ping_handler import handle_ping_request
-from .tts_handler import handle_tts_interrupt_request
+from .tts_handler import TTSHandler
 
 logger = setup_logging("websocket_connection_manager")
 
@@ -37,8 +30,9 @@ client_ai_responding: Dict[str, bool] = {}
 async def handle_websocket(
     websocket: WebSocket,
     client_id: str,
-    chat_waifu_llm: ChatWaifu_LLM,
-    chat_waifu_tts: ChatWaifu_TTS,
+    chat_handler: ChatHandler,
+    tts_handler: TTSHandler,
+    asr_handler: ASRHandler,
     persona: str,
     mcp_config: dict,
 ) -> None:
@@ -66,7 +60,9 @@ async def handle_websocket(
         logger.info(f"🔊 Client #{client_id} starting TTS worker...")
         try:
             tts_task = asyncio.create_task(
-                tts_worker(str(client_id), websocket, chat_waifu_tts)
+                tts_handler.worker_manager.tts_worker(
+                    str(client_id), websocket, tts_handler.worker_manager.service
+                )
             )
             logger.info(f"✅ Client #{client_id} TTS worker started successfully")
         except Exception as tts_init_error:
@@ -98,7 +94,11 @@ async def handle_websocket(
                     if isinstance(request, ChatRequest):
                         # Only interrupt TTS if AI is currently responding
                         if client_ai_responding.get(client_id, False):
-                            await interrupt_tts(str(client_id))
+                            await tts_handler.tts_interrupt_request(
+                                websocket,
+                                client_id,
+                                TTSInterruptRequest(reason="New chat message received"),
+                            )
                             logger.info(
                                 f"🚫 Client #{client_id} TTS interrupted - AI was responding when user sent new message"
                             )
@@ -107,25 +107,34 @@ async def handle_websocket(
                                 f"✅ Client #{client_id} new chat message - no TTS to interrupt (AI not responding)"
                             )
 
-                        await handle_chat_request(
+                        # AIDEV-NOTE: Process chat request and handle TTS for each sentence chunk
+                        async for sentence_data in chat_handler.chat_request(
                             websocket,
                             client_id,
                             request,
-                            chat_waifu_llm,
                             message_history,
                             mcp_config,
                             client_ai_responding,
-                        )
+                        ):
+                            if sentence_data and sentence_data.get("sentence"):
+                                await tts_handler.send_to_tts(
+                                    client_id=client_id,
+                                    sentence=sentence_data["sentence"],
+                                    reference_id=sentence_data.get("reference_id"),
+                                )
+
                     elif isinstance(request, PingRequest):
                         await handle_ping_request(websocket, request)
                     elif isinstance(request, TTSInterruptRequest):
-                        await handle_tts_interrupt_request(
+                        await tts_handler.tts_interrupt_request(
                             websocket, client_id, request
                         )
                     elif isinstance(request, ASRTranscribeRequest):
                         # AIDEV-NOTE: Handle ASR transcription requests
-                        logger.info(f"🎤 Client #{client_id} ASR transcription request")
-                        await handle_asr_request(websocket, client_id, request)
+                        async for asr_response in asr_handler.transcribe_request(
+                            request
+                        ):
+                            await websocket.send_json(asr_response)
                     else:
                         # Unsupported request type
                         await send_error_response(
@@ -169,10 +178,7 @@ async def handle_websocket(
         logger.info(f"🧹 Client #{client_id} cleaning up resources...")
 
         # Cleanup TTS queue
-        try:
-            cleanup_tts_queue(str(client_id))
-        except Exception as cleanup_error:
-            logger.error(f"TTS cleanup error: {cleanup_error}")
+        await tts_handler.clean_tts_queue(client_id)
 
         # Cancel TTS task
         if tts_task and not tts_task.done():
@@ -188,33 +194,3 @@ async def handle_websocket(
                 logger.error(f"TTS task cancellation error: {cancel_error}")
 
         logger.info(f"✅ Client #{client_id} cleanup completed")
-
-
-async def handle_asr_request(
-    websocket: WebSocket, client_id: str, request: ASRTranscribeRequest
-) -> None:
-    """
-    ASR 전사 요청 처리
-
-    Args:
-        websocket: WebSocket connection
-        client_id: Client identifier
-        request: ASR transcription request
-    """
-    try:
-        logger.info(f"🎤 Client #{client_id} starting ASR transcription")
-
-        # ASR 핸들러를 사용하여 전사 처리
-        async for response_data in asr_handler.handle_transcribe_request(request):
-            await websocket.send_text(response_data)
-            logger.debug(f"📤 Client #{client_id} ASR response sent")
-
-        logger.info(f"✅ Client #{client_id} ASR transcription completed")
-
-    except Exception as e:
-        logger.error(f"❌ Client #{client_id} ASR processing error: {e}")
-        await send_error_response(
-            websocket,
-            f"ASR processing failed: {str(e)}",
-            error_code="ASR_PROCESSING_ERROR",
-        )

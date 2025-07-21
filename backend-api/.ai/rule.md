@@ -19,7 +19,7 @@ The Waifu Assistant Backend API is the server-side foundation for the Waifu Assi
 | #: | AI *may* do                                                            | AI *must NOT* do                                                                    |
 |---|------------------------------------------------------------------------|-------------------------------------------------------------------------------------|
 | G-0 | Whenever unsure about something that's related to the project, ask the developer for clarification before making changes.    |  ❌ Write changes or use tools when you are not sure about something project specific, or if you don't have context for a particular feature/decision. |
-| G-1 | Generate code **only inside** relevant source directories (e.g., `src/services/llm_service/` for the llm_service, `src/utils/` for the utilities) or explicitly pointed files.    | ❌ Touch `tests/`  files without permission. |
+| G-1 | Generate code **only inside** relevant source directories (e.g., `src/services/llm/` for the service, `src/utils/` for the utilities) or explicitly pointed files.    | ❌ Touch `tests/`  files without permission. |
 | G-2 | Add/update **`AIDEV-NOTE:` anchor comments** near non-trivial edited code. | ❌ Delete or mangle existing `AIDEV-` comments.                                     |
 | G-3 | Follow lint/style configs (`pyproject.toml`) Use the project's configured linter, if available, instead of manually re-formatting code. | ❌ Re-format code to any other style.                                               |
 | G-4 | For changes >300 LOC or >3 files, **ask for confirmation**.            | ❌ Refactor large modules without human guidance.                                     |
@@ -41,6 +41,23 @@ The Waifu Assistant Backend API is the server-side foundation for the Waifu Assi
 - **Error Handling**: Use typed, hierarchical exceptions and context managers for resource management.
 - **Documentation**: Use Google-style docstrings for all public functions and classes.
 - **Testing**: Test files should be located in the `tests/` directory and match the source file patterns.
+
+### Test code:
+
+- Start with the Core: Write tests for the most critical parts of your application first.
+- Expand Incrementally: Once the core is stable, gradually extend your test suite to cover surrounding modules and features.
+- Use Coverage as a Guide: Use test coverage metrics not as a strict rule to follow, but as a tool to identify untested parts of your code.
+
+- 1. Core Business Logic
+    - What it is: The code that handles the primary functions of your application. For example, payment processing, order creation, or user authentication in an e-commerce platform.
+    - Why it's first: A bug in the core logic can be catastrophic to your entire service. These tests ensure your application works as intended for its main purpose.
+- 2. Integration Points
+    - What it is: Any part of your code that interacts with external systems, such as a database, an external API, or the file system.
+    - Why it's important: These are common points of failure, as they depend on external factors. It's good practice to use mocking tools like pytest's monkeypatch or Python's unittest.mock to isolate your application logic from the external system during tests.
+
+- 3. Complex Logic & Algorithms
+    - What it is: Code with many conditional branches (if/else), loops, or complex calculations.
+    - Why it's important: The more complex the logic, the higher the chance of hidden bugs and unhandled edge cases. These areas require thorough testing with a wide variety of inputs.
 
 ### Linting & Formatting Script
 The following script (`lint.sh`) is used to enforce code quality. It formats, sorts imports, and lints the codebase automatically.

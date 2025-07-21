@@ -30,9 +30,22 @@ Example usage:
 class ChatWaifu_LLM(object):
     def __init__(
         self,
-        llm: ChatOpenAI,
+        openai_api_base: str = None,
+        openai_api_key: str = None,
+        model: str = "gpt-4o-mini",
+        temperature: float = 0.7,
+        top_p: float = 0.9,
+        max_tokens: int = 1000,
     ):
-        self.llm = llm
+        self.llm = ChatOpenAI(
+            openai_api_base=openai_api_base,
+            model=model,
+            openai_api_key=openai_api_key,
+            temperature=temperature,
+            top_p=top_p,
+            max_tokens=max_tokens,
+            extra_body={"min_p": 0, "top_k": 20},
+        )
         logger.info(f"ChatWaifu_LLM initialized with model: {self.llm.model_name}")
 
     async def process_message(self, messages, agent, config: str):

@@ -4,15 +4,17 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from fastapi import WebSocket
-from langchain_openai import ChatOpenAI
 
 from src.configs import settings
 from src.configs.prompts import NANAMI
 from src.core.app import create_app
 from src.core.logging import setup_logging
-from src.services.llm_service.service import ChatWaifu_LLM
-from src.services.tts_service.service import ChatWaifu_TTS
-from src.websocket.handlers import handle_websocket
+from src.websocket.handlers import (
+    ASRHandler,
+    ChatHandler,
+    TTSHandler,
+    handle_websocket,
+)
 
 # 로깅 설정
 logger = setup_logging()
@@ -21,28 +23,27 @@ logger = setup_logging()
 app = create_app()
 
 # 전역 변수들 (초기화는 나중에)
-chat_waifu_llm = None
-chat_waifu_tts = None
 USER_NAME = "エクリア"
 PERSONA = NANAMI.format(your_name=USER_NAME)
 MCP_CONFIG = None
 
+# AIDEV-NOTE: Global handler instances - refactored from individual service instances
+CHAT_HANDLER = None
+TTS_HANDLER = None
+ASR_HANDLER = None
+
 
 def initialize_services():
     """서비스들을 초기화합니다."""
-    global chat_waifu_llm, chat_waifu_tts, PERSONA, MCP_CONFIG
+    global CHAT_HANDLER, TTS_HANDLER, ASR_HANDLER, PERSONA, MCP_CONFIG
 
-    if chat_waifu_llm is not None:  # 이미 초기화되었으면 스킵
+    if CHAT_HANDLER is not None:  # 이미 초기화되었으면 스킵
         return
 
-    # 서비스 인스턴스 초기화
-    chat_openai_model = ChatOpenAI(
-        **settings.llm_configs.model_dump(), extra_body={"min_p": 0, "top_k": 20}
-    )
-    chat_waifu_llm = ChatWaifu_LLM(llm=chat_openai_model)
-    chat_waifu_tts = ChatWaifu_TTS(
-        url=settings.tts_configs.url, api_key=settings.tts_configs.api_key
-    )
+    # 서비스 핸들러 인스턴스 초기화
+    CHAT_HANDLER = ChatHandler(settings.llm_configs)
+    TTS_HANDLER = TTSHandler(settings.tts_configs)
+    ASR_HANDLER = ASRHandler(settings.asr_configs)
     MCP_CONFIG = settings.mcp_configs.mcp_servers
 
     # 시작 로그 (한 번만 출력)
@@ -66,8 +67,9 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
         await handle_websocket(
             websocket=websocket,
             client_id=client_id,
-            chat_waifu_llm=chat_waifu_llm,
-            chat_waifu_tts=chat_waifu_tts,
+            chat_handler=CHAT_HANDLER,
+            tts_handler=TTS_HANDLER,
+            asr_handler=ASR_HANDLER,
             persona=PERSONA,
             mcp_config=MCP_CONFIG,
         )

@@ -4,8 +4,7 @@ import tempfile
 import time
 from typing import AsyncGenerator
 
-from src.configs import settings
-from src.services.asr_service.service import ASRService
+from src.services.asr.service import ASRService
 from src.websocket.models import (
     ASRResultResponse,
     ASRStreamingResponse,
@@ -21,12 +20,12 @@ logger = logging.getLogger(__name__)
 class ASRHandler:
     """ASR WebSocket 메시지 처리기"""
 
-    def __init__(self):
+    def __init__(self, asr_settings):
         """ASR 핸들러 초기화"""
-        self.asr_service = ASRService(settings.asr_configs)
+        self.service = ASRService(asr_settings)
         logger.info("ASRHandler initialized with vLLM ASR service")
 
-    async def handle_transcribe_request(
+    async def transcribe_request(
         self, request: ASRTranscribeRequest
     ) -> AsyncGenerator[dict, None]:
         """
@@ -100,13 +99,13 @@ class ASRHandler:
                 details={"error": str(e)},
             ).model_dump()
 
-    async def _handle_regular_transcription(
+    async def _regular_transcription(
         self, audio_file_path: str, request: ASRTranscribeRequest, start_time: float
     ) -> AsyncGenerator[dict, None]:
         """일반 (비스트리밍) 전사 처리"""
         try:
             # ASR 서비스를 사용하여 전사 수행
-            result = await self.asr_service.transcribe_async(
+            result = await self.service.transcribe_async(
                 audio_file_path,
                 language=request.language,
                 temperature=request.temperature,
@@ -135,7 +134,7 @@ class ASRHandler:
                 details={"error": str(e)},
             ).model_dump()
 
-    async def _handle_streaming_transcription(
+    async def _streaming_transcription(
         self, audio_file_path: str, request: ASRTranscribeRequest
     ) -> AsyncGenerator[dict, None]:
         """스트리밍 전사 처리"""
@@ -143,7 +142,7 @@ class ASRHandler:
             logger.debug("Starting streaming ASR transcription")
 
             # 스트리밍 전사 수행
-            async for chunk in self.asr_service.transcribe_stream(
+            async for chunk in self.service.transcribe_stream(
                 audio_file_path,
                 language=request.language,
                 temperature=request.temperature,
@@ -173,12 +172,7 @@ class ASRHandler:
     async def close(self):
         """ASR 핸들러 정리"""
         try:
-            await self.asr_service.aclose()
+            await self.service.aclose()
             logger.info("ASRHandler closed successfully")
         except Exception as e:
             logger.warning(f"Error closing ASRHandler: {e}")
-
-
-# AIDEV-NOTE: Global ASR handler instance for WebSocket connections
-# Initialized when the module is imported
-asr_handler = ASRHandler()

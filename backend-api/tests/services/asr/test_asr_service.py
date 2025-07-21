@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 from src.configs.models import ASRSettings
-from src.services.asr_service.service import ASRService
+from src.services.asr.service import ASRService
 
 
 def create_dummy_audio_file():
@@ -659,9 +659,9 @@ async def test_asr_service_e2e_real_api():
     This test requires the ASR service to be running at the configured URL.
     Skip with: pytest -m "not e2e"
     """
-    from src.configs.loader import load_config
     import os
-    import asyncio
+
+    from src.configs.loader import load_config
 
     # Load actual configuration
     config = load_config()
@@ -695,18 +695,18 @@ async def test_asr_service_e2e_real_api():
         result = await asr_service.transcribe_async(audio_file)
 
         # AIDEV-NOTE: Ensure we got a complete response, not a partial/aborted one
-        assert (
-            result is not None
-        ), "ASR API returned None - request was aborted or failed"
-        assert isinstance(
-            result, str
-        ), f"ASR API returned invalid type {type(result)}, expected string"
-        assert (
-            len(result.strip()) > 0
-        ), "ASR API returned empty string - transcription incomplete"
-        assert (
-            len(result.strip()) >= 5
-        ), f"ASR transcription too short ('{result}') - likely incomplete"
+        assert result is not None, (
+            "ASR API returned None - request was aborted or failed"
+        )
+        assert isinstance(result, str), (
+            f"ASR API returned invalid type {type(result)}, expected string"
+        )
+        assert len(result.strip()) > 0, (
+            "ASR API returned empty string - transcription incomplete"
+        )
+        assert len(result.strip()) >= 5, (
+            f"ASR transcription too short ('{result}') - likely incomplete"
+        )
 
         print(f"✅ ASR E2E received complete response: '{result}'")
 
@@ -730,10 +730,7 @@ async def test_asr_service_e2e_real_api():
             pytest.fail(f"Unexpected error in ASR E2E test: {e}")
     finally:
         # AIDEV-NOTE: Ensure proper cleanup to prevent connection issues
-        try:
-            await asr_service.aclose()
-        except:
-            pass
+        await asr_service.aclose()
 
 
 @pytest.mark.e2e
@@ -742,8 +739,9 @@ async def test_asr_service_e2e_different_languages():
     """
     E2E test that tests ASR with different language settings using Japanese audio.
     """
-    from src.configs.loader import load_config
     import os
+
+    from src.configs.loader import load_config
 
     config = load_config()
 
@@ -787,7 +785,7 @@ async def test_asr_service_e2e_different_languages():
         if found_japanese:
             print(f"✅ Found expected Japanese words {found_japanese}")
         elif has_japanese_chars:
-            print(f"✅ Found Japanese characters in transcription")
+            print("✅ Found Japanese characters in transcription")
         else:
             print(f"⚠️  Japanese transcription may be romanized: {result}")
 
@@ -800,10 +798,7 @@ async def test_asr_service_e2e_different_languages():
             pytest.fail(f"Unexpected error in ASR E2E test: {e}")
     finally:
         # AIDEV-NOTE: Ensure proper cleanup to prevent connection issues
-        try:
-            await asr_service.aclose()
-        except:
-            pass
+        await asr_service.aclose()
 
 
 @pytest.mark.e2e
@@ -812,9 +807,10 @@ async def test_asr_service_e2e_error_handling():
     """
     E2E test that verifies error handling with invalid audio files.
     """
-    from src.configs.loader import load_config
-    import tempfile
     import os
+    import tempfile
+
+    from src.configs.loader import load_config
 
     config = load_config()
     asr_service = ASRService(config.asr_configs)
@@ -902,7 +898,4 @@ async def test_asr_service_e2e_error_handling():
             pytest.fail(f"Unexpected error in ASR E2E test: {e}")
     finally:
         # AIDEV-NOTE: Ensure proper cleanup to prevent connection issues
-        try:
-            await asr_service.aclose()
-        except:
-            pass
+        await asr_service.aclose()

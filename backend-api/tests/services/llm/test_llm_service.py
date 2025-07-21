@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import pytest
 from langchain_core.messages import AIMessageChunk
 
-from src.services.llm_service.service import ChatWaifu_LLM
+from src.services.llm.service import ChatWaifu_LLM
 
 pytestmark = pytest.mark.asyncio
 
@@ -43,7 +43,12 @@ async def test_process_message_simple_content():
     msg = SimpleNamespace(content="Hello world.", additional_kwargs={})
     meta = {"langgraph_node": "n1"}
     agent = DummyAgent([(msg, meta)])
-    llm = ChatWaifu_LLM(llm=SimpleNamespace(model_name="test-model"))
+
+    # Create a mock LLM object that the service expects
+    mock_llm = SimpleNamespace(model_name="test-model")
+    llm = ChatWaifu_LLM(openai_api_base="http://test", openai_api_key="test-key")
+    llm.llm = mock_llm  # Replace the created LLM with our mock
+
     results = []
     async for item in llm.process_message(
         messages=["ignored"], agent=agent, config="cfg"
@@ -61,7 +66,11 @@ async def test_process_message_buffer_flush_at_end():
     msg2 = SimpleNamespace(content="more text", additional_kwargs={})
     meta = {"langgraph_node": "n2"}
     agent = DummyAgent([(msg1, meta), (msg2, meta)])
-    llm = ChatWaifu_LLM(llm=SimpleNamespace(model_name="m"))
+
+    mock_llm = SimpleNamespace(model_name="m")
+    llm = ChatWaifu_LLM(openai_api_base="http://test", openai_api_key="test-key")
+    llm.llm = mock_llm
+
     results = []
     async for item in llm.process_message(messages=[], agent=agent, config="c"):
         results.append(item)
@@ -73,7 +82,7 @@ async def test_process_message_buffer_flush_at_end():
 async def test_process_message_tool_call(monkeypatch):
     """Yield a tool_call dict when AIMessageChunk-like objects contain tool_call_chunks."""
     # Treat SimpleNamespace as AIMessageChunk for testing
-    import src.services.llm_service.service as svc_mod
+    import src.services.llm.service as svc_mod
 
     monkeypatch.setattr(svc_mod, "AIMessageChunk", SimpleNamespace)
     # create two message chunks to simulate tool call assembly
@@ -94,7 +103,11 @@ async def test_process_message_tool_call(monkeypatch):
             (tool_chunk2, {"langgraph_node": "n3"}),
         ]
     )
-    llm = ChatWaifu_LLM(llm=SimpleNamespace(model_name="m"))
+
+    mock_llm = SimpleNamespace(model_name="m")
+    llm = ChatWaifu_LLM(openai_api_base="http://test", openai_api_key="test-key")
+    llm.llm = mock_llm
+
     results = []
     async for item in llm.process_message(messages=[], agent=agent, config="c"):
         results.append(item)
@@ -110,7 +123,11 @@ async def test_process_message_error_handling():
     msg = SimpleNamespace(content="Error part", additional_kwargs={})
     # error occurs immediately
     agent = DummyAgent(outputs=[(msg, {})], error=True)
-    llm = ChatWaifu_LLM(llm=SimpleNamespace(model_name="x"))
+
+    mock_llm = SimpleNamespace(model_name="x")
+    llm = ChatWaifu_LLM(openai_api_base="http://test", openai_api_key="test-key")
+    llm.llm = mock_llm
+
     results = []
     async for item in llm.process_message(messages=[], agent=agent, config="cfg"):
         results.append(item)
@@ -130,9 +147,7 @@ async def test_stream_method_with_end_and_state(monkeypatch):
         async def get_tools(self):
             return []
 
-    monkeypatch.setattr(
-        "src.services.llm_service.service.MultiServerMCPClient", StubClient
-    )
+    monkeypatch.setattr("src.services.llm.service.MultiServerMCPClient", StubClient)
 
     # stub agent with process_message stub
     class StubAgent:
@@ -146,7 +161,7 @@ async def test_stream_method_with_end_and_state(monkeypatch):
             return SimpleNamespace(values={"messages": ["m1", "m2"]})
 
     monkeypatch.setattr(
-        "src.services.llm_service.service.create_react_agent",
+        "src.services.llm.service.create_react_agent",
         lambda llm, tools, checkpointer: StubAgent(),
     )
 
@@ -155,7 +170,11 @@ async def test_stream_method_with_end_and_state(monkeypatch):
         yield {"type": "content", "text": "hi", "node": None}
 
     monkeypatch.setattr(ChatWaifu_LLM, "process_message", fake_process_message)
-    llm = ChatWaifu_LLM(llm=SimpleNamespace(model_name="m"))
+
+    mock_llm = SimpleNamespace(model_name="m")
+    llm = ChatWaifu_LLM(openai_api_base="http://test", openai_api_key="test-key")
+    llm.llm = mock_llm
+
     results = []
     async for item in llm.stream(
         message=["msg"], mcp_config={"mcp_servers": []}, client_id="cid"
@@ -171,34 +190,27 @@ async def test_stream_method_with_end_and_state(monkeypatch):
 
 
 @pytest.mark.e2e
-async def test_llm_service_e2e_real_api():
+async def test_service_e2e_real_api():
     """
     E2E test that makes an actual API call to the LLM service.
 
     This test requires the LLM service to be running at the configured URL.
     Skip with: pytest -m "not e2e"
     """
+
     from src.configs.loader import load_config
-    from langchain_openai import ChatOpenAI
-    import asyncio
 
     # Load actual configuration
     config = load_config()
 
     try:
-        # AIDEV-NOTE: E2E test waits for full response, no early abort for proper testing
-        # Create actual LLM instance with real config - allow sufficient tokens for complete response
-        llm = ChatOpenAI(
-            model=config.llm_configs.model,
-            openai_api_key=config.llm_configs.openai_api_key,
-            openai_api_base=config.llm_configs.openai_api_base,
-            temperature=config.llm_configs.temperature,
-            max_tokens=50,  # Allow more tokens for complete response testing
-            timeout=60.0,  # Allow sufficient time for full response
-        )
-
         # Create LLM service with real LLM
-        llm_service = ChatWaifu_LLM(llm=llm)
+        llm_service = ChatWaifu_LLM(
+            openai_api_base=config.llm_configs.openai_api_base,
+            openai_api_key=config.llm_configs.openai_api_key,
+            model=config.llm_configs.model,
+            temperature=config.llm_configs.temperature,
+        )
 
         # Test simple streaming with meaningful message
         test_messages = [
@@ -250,23 +262,18 @@ async def test_llm_service_e2e_with_mcp():
 
     This test may be skipped if MCP services are not available.
     """
+
     from src.configs.loader import load_config
-    from langchain_openai import ChatOpenAI
 
     config = load_config()
 
     try:
-        # AIDEV-NOTE: E2E test with MCP - allow full response without early termination
-        llm = ChatOpenAI(
-            model=config.llm_configs.model,
-            openai_api_key=config.llm_configs.openai_api_key,
+        llm_service = ChatWaifu_LLM(
             openai_api_base=config.llm_configs.openai_api_base,
+            openai_api_key=config.llm_configs.openai_api_key,
+            model=config.llm_configs.model,
             temperature=config.llm_configs.temperature,
-            max_tokens=50,  # Allow sufficient tokens for MCP functionality
-            timeout=90.0,  # Allow extra time for MCP operations
         )
-
-        llm_service = ChatWaifu_LLM(llm=llm)
 
         # Test with meaningful message for MCP
         test_messages = [
@@ -326,20 +333,17 @@ async def test_llm_service_e2e_error_handling():
     """
     E2E test that verifies error handling with invalid configurations.
     """
-    from langchain_openai import ChatOpenAI
     import asyncio
 
     try:
         # Test with invalid API configuration (should fail quickly)
-        invalid_llm = ChatOpenAI(
-            model="invalid-model",
-            openai_api_key="invalid-key",
-            openai_api_base="http://localhost:99999/v1",  # Invalid port
-            temperature=0.5,
-            max_tokens=10,  # Small limit
-        )
 
-        llm_service = ChatWaifu_LLM(llm=invalid_llm)
+        llm_service = ChatWaifu_LLM(
+            openai_api_base="http://localhost:99999/v1",  # Invalid port
+            openai_api_key="invalid-key",
+            model="invalid-model",
+            temperature=0.5,
+        )
 
         test_messages = [{"role": "user", "content": "Test"}]
         mcp_config = {"mcp_servers": []}
