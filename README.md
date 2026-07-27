@@ -4,6 +4,8 @@ The Unified assistatnt for waifu lovers.
 
 The goal of this project is that the girl recognize user's personality, emotion and voice. So that, in given context, the girl should response correct voice, text and face.
 
+Check [YUI](https://github.com/yw0nam/YUI) my new waifu project. This project is archieved. 
+
 # Demo
 
 [![IMAGE ALT TEXT HERE](https://github.com/user-attachments/assets/91f2d62b-11d2-4d32-aa8f-03ef8dfdae7a)
